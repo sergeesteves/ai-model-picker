@@ -32,7 +32,7 @@ sortie de progression sur stderr) ; ensuite tout est lu dans le cache.
 | « contexte d'un million » | `--min-context 1000000` |
 | « moins de 1 $ le million » | `--max-price 1` (prix mixte) |
 | open source, poids ouverts, auto-hébergeable | `--open-weights` |
-| lit des images / PDF | `--input image` / `--input file` |
+| analyse des images | `--input image` (les PDF ne demandent rien : OpenRouter en extrait le texte) |
 | « fiable », « valeur sûre » | `--min-sources 2` |
 | « top 10 » | `--top 10` |
 
