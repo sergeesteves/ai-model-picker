@@ -9,7 +9,7 @@ n'intervient dans le calcul. Tous les paramètres sont affichés dans la sortie.
 |---|---|---|---|---|
 | Prix, contexte, modalités, poids ouverts | OpenRouter `GET /api/v1/models` | officiel, sans clé | quotidienne | ~440 modèles |
 | Qualité : Intelligence / Coding / Agentic Index | Artificial Analysis, champ `benchmarks.artificial_analysis` de l'API OpenRouter | idem | quotidienne | ~187 modèles |
-| Qualité : préférence humaine (Text, Coding, WebDev) et Agent | LMArena, dataset Hugging Face `lmarena-ai/leaderboard-dataset`, split `latest` | données ouvertes | quelques jours | ~400 entrées text, ~130 webdev, ~46 agent |
+| Qualité : préférence humaine (Text, Coding, rédaction créative, respect des consignes, français, requêtes longues, WebDev, Agent) | LMArena, dataset Hugging Face `lmarena-ai/leaderboard-dataset`, split `latest` | données ouvertes | quelques jours | ~400 entrées par catégorie de `text` (281 en français), ~130 webdev, ~46 agent |
 | Qualité : Epoch Capabilities Index | Epoch AI, `benchmark_data.zip` | données ouvertes (CC-BY) | ~2 semaines | ~270 modèles |
 | Usage réel | OpenRouter `GET /api/frontend/v1/rankings/models?view=day` | **non documenté**, sans clé | J-1 | tous les modèles servis |
 | Latence et vitesse | OpenRouter `GET /api/frontend/v1/stats/endpoint?permaslug=…&variant=standard&latencyMetric=latency&perfWorkload=text_generation` (onglet Performance d'une page modèle) | **non documenté**, sans clé, 1 appel par modèle (~320/jour, espacés de 0,3 s) | médianes des 30 dernières minutes au moment de la collecte | modèles servis avec trafic |
@@ -55,8 +55,16 @@ pas dépasser 75, un modèle confirmé par trois sources peut atteindre 87,5. Le
 | Tâche | Sources | Part d'entrée du prix mixte |
 |---|---|---|
 | `general` | AA Intelligence, LMArena Text, Epoch ECI | 80 % |
+| `redaction` | AA Intelligence, LMArena rédaction créative, LMArena respect des consignes | 40 % |
+| `redaction_fr` | LMArena français, LMArena rédaction créative, LMArena respect des consignes | 40 % |
 | `code` | AA Coding, LMArena Coding, LMArena WebDev | 90 % |
 | `agentic` | AA Agentic, LMArena Agent | 95 % |
+| `documents` | AA Intelligence, LMArena requêtes longues, LMArena Text | 95 % |
+
+Rédiger inverse l'économie des tokens : un brief court produit un long texte, donc le prix de **sortie** pèse
+60 %. En `redaction_fr`, le classement des prompts en français remplace l'indice d'intelligence : un modèle
+bon en anglais ne l'est pas toujours en français, et l'écart se voit (GLM 5.3 Flash est au 94ᵉ percentile
+français, MiMo-V2.5 au 70ᵉ, pour une qualité de rédaction comparable).
 
 Profils modifiables dans `data/tasks.json`. Repère : sur OpenRouter, 97 % des tokens traités le
 16/09/2026 étaient des tokens d'entrée (trafic dominé par les agents de code).

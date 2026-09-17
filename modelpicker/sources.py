@@ -32,6 +32,10 @@ LMARENA_DATASET = "lmarena-ai/leaderboard-dataset"
 LMARENA_BOARDS = {
     "lmarena_text": ("text", "overall"),
     "lmarena_coding": ("text", "coding"),
+    "lmarena_creative_writing": ("text", "creative_writing"),
+    "lmarena_instruction_following": ("text", "instruction_following"),
+    "lmarena_french": ("text", "french"),
+    "lmarena_longer_query": ("text", "longer_query"),
     "lmarena_webdev": ("webdev", "overall"),
     "lmarena_agent": ("agent", "overall"),
 }

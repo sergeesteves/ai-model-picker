@@ -23,7 +23,10 @@ sortie de progression sur stderr) ; ensuite tout est lu dans le cache.
 |---|---|
 | code, dev, programmation, refactor, front, webdev | `--task code` |
 | agent, outils, tool calling, automatisation, workflow agentique | `--task agentic` (souvent avec `--tools`) |
-| rédaction, chat, résumé, analyse, « en général », rien de précis | `--task general` (défaut) |
+| rédiger : article, blog, SEO, GEO, newsletter, landing, post social, copywriting | `--task redaction` |
+| rédiger **en français** (contenu francophone) | `--task redaction_fr` |
+| résumer / analyser des documents longs, PDF, transcriptions, audits | `--task documents` |
+| chat, questions-réponses, traduction, rien de précis | `--task general` (défaut) |
 | « rapport qualité/prix », « meilleur pour le prix », rien de précis | `--sort value` (défaut) |
 | « le meilleur », « le plus performant », budget indifférent | `--sort quality` |
 | « le moins cher », « le plus économique » | `--sort price` + **toujours** un `--min-quality` (50 si « correct/décent » ou rien de précisé, 60 si « bon », 70 si « excellent ») |

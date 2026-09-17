@@ -33,6 +33,7 @@ Aucune clé API, aucun secret. Le cache vit dans `~/.cache/ai-model-picker` (var
 ## Utilisation
 
 ```bash
+python -m modelpicker recommend --task redaction_fr
 python -m modelpicker recommend --task code
 python -m modelpicker recommend --author openai
 python -m modelpicker recommend --task agentic --sort price --min-context 1000000 --min-quality 60
@@ -41,7 +42,7 @@ python -m modelpicker recommend --task code --open-weights --format json
 
 | Option | Rôle |
 |---|---|
-| `--task general\|code\|agentic` | sources de qualité et pondération du prix |
+| `--task general\|redaction\|redaction_fr\|code\|agentic\|documents` | sources de qualité et pondération du prix (rédaction : le prix de sortie pèse 60 %) |
 | `--sort value\|quality\|price\|usage\|fast` | rapport qualité/prix (défaut), qualité, prix, adoption, rapide + qualité/prix |
 | `--author openai,anthropic` | éditeurs (préfixe du slug OpenRouter) |
 | `--min-context`, `--max-price`, `--min-quality`, `--min-sources` | contraintes |

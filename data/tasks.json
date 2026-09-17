@@ -1,18 +1,56 @@
 {
-  "_doc": "Profils de tâche. input_share = part des tokens d'entrée dans le prix mixte. sources = signaux de qualité moyennés (en percentiles). Voir docs/METHODOLOGIE.md.",
+  "_doc": "Profils de tâche. input_share = part des tokens d'entrée dans le prix mixte (rédaction = beaucoup de sortie pour un brief court ; agents et analyse de documents = surtout de l'entrée). sources = signaux de qualité moyennés (en percentiles). Voir docs/METHODOLOGIE.md.",
   "general": {
     "label": "usage général",
     "input_share": 0.8,
-    "sources": ["aa_intelligence", "lmarena_text", "epoch_eci"]
+    "sources": [
+      "aa_intelligence",
+      "lmarena_text",
+      "epoch_eci"
+    ]
+  },
+  "redaction": {
+    "label": "rédaction (SEO / GEO)",
+    "input_share": 0.4,
+    "sources": [
+      "aa_intelligence",
+      "lmarena_creative_writing",
+      "lmarena_instruction_following"
+    ]
+  },
+  "redaction_fr": {
+    "label": "rédaction en français",
+    "input_share": 0.4,
+    "sources": [
+      "lmarena_french",
+      "lmarena_creative_writing",
+      "lmarena_instruction_following"
+    ]
   },
   "code": {
     "label": "code",
     "input_share": 0.9,
-    "sources": ["aa_coding", "lmarena_coding", "lmarena_webdev"]
+    "sources": [
+      "aa_coding",
+      "lmarena_coding",
+      "lmarena_webdev"
+    ]
   },
   "agentic": {
     "label": "agents / outils",
     "input_share": 0.95,
-    "sources": ["aa_agentic", "lmarena_agent"]
+    "sources": [
+      "aa_agentic",
+      "lmarena_agent"
+    ]
+  },
+  "documents": {
+    "label": "analyse de documents longs",
+    "input_share": 0.95,
+    "sources": [
+      "aa_intelligence",
+      "lmarena_longer_query",
+      "lmarena_text"
+    ]
   }
 }

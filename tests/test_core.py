@@ -104,6 +104,22 @@ PERF = [{"source_date": "2026-09-17", "measured_at": "2026-09-17T10:00:00+00:00"
 }}]
 
 
+class TestTasks(unittest.TestCase):
+    def test_every_task_source_is_known_and_labelled(self):
+        from modelpicker.scoring import SOURCE_LABELS, SOURCE_SHORT, load_tasks
+        for name, task in load_tasks().items():
+            self.assertTrue(task["label"] and 0 < task["input_share"] < 1, name)
+            for src in task["sources"]:
+                self.assertIn(src, SOURCE_LABELS, f"{name} -> {src}")
+                self.assertIn(src, SOURCE_SHORT, f"{name} -> {src}")
+
+    def test_writing_tasks_weight_output_price(self):
+        from modelpicker.scoring import load_tasks
+        tasks = load_tasks()
+        self.assertLess(tasks["redaction"]["input_share"], 0.5)   # rédaction : la sortie domine
+        self.assertGreater(tasks["documents"]["input_share"], 0.9)  # documents longs : l'entrée domine
+
+
 class TestSpeed(unittest.TestCase):
     def run_query(self, **q):
         return recommend(MODELS, USAGE, LMARENA, None, {"top": 10, "min_quality": 0, **q},

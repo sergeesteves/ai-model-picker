@@ -20,6 +20,10 @@ SOURCE_LABELS = {
     "aa_agentic": "Artificial Analysis · Agentic Index (via API OpenRouter)",
     "lmarena_text": "LMArena · Text, préférence humaine (Elo)",
     "lmarena_coding": "LMArena · Text/Coding, préférence humaine (Elo)",
+    "lmarena_creative_writing": "LMArena · Rédaction créative, préférence humaine (Elo)",
+    "lmarena_instruction_following": "LMArena · Respect des consignes, préférence humaine (Elo)",
+    "lmarena_french": "LMArena · Prompts en français, préférence humaine (Elo)",
+    "lmarena_longer_query": "LMArena · Requêtes longues, préférence humaine (Elo)",
     "lmarena_webdev": "LMArena · WebDev, préférence humaine (Elo)",
     "lmarena_agent": "LMArena · Agent, résultats de sessions agentiques réelles (score)",
     "epoch_eci": "Epoch AI · Epoch Capabilities Index",
@@ -27,6 +31,8 @@ SOURCE_LABELS = {
 SOURCE_SHORT = {
     "aa_intelligence": "AA", "aa_coding": "AA", "aa_agentic": "AA",
     "lmarena_text": "LMArena", "lmarena_coding": "LMArena-code", "lmarena_webdev": "LMArena-webdev",
+    "lmarena_creative_writing": "LMArena-rédac", "lmarena_instruction_following": "LMArena-consignes",
+    "lmarena_french": "LMArena-fr", "lmarena_longer_query": "LMArena-long",
     "lmarena_agent": "LMArena-agent", "epoch_eci": "Epoch",
 }
 AA_FIELDS = {"aa_intelligence": "intelligence_index", "aa_coding": "coding_index", "aa_agentic": "agentic_index"}

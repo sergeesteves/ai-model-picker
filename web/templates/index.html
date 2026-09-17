@@ -28,6 +28,7 @@
     <div class="examples">
       <span class="hint">Ou partez d'un exemple :</span>
       <button type="button" class="quiet example" data-question="Meilleur rapport qualité/prix pour du code" data-query='{"task":"code","sort":"value"}'>Code, meilleur rapport qualité/prix</button>
+      <button type="button" class="quiet example" data-question="Meilleur rapport qualité/prix pour rédiger des articles SEO en français" data-query='{"task":"redaction_fr","sort":"value"}'>Rédiger en français, qualité/prix</button>
       <button type="button" class="quiet example" data-question="Le meilleur rapport qualité/prix chez OpenAI" data-query='{"task":"general","sort":"value","authors":"openai"}'>Le meilleur chez OpenAI pour son prix</button>
       <button type="button" class="quiet example" data-question="Le moins cher avec un million de tokens de contexte et un niveau agentique correct" data-query='{"task":"agentic","sort":"price","min_context":1000000,"min_quality":50}'>Le moins cher avec 1M de contexte, agents</button>
       <button type="button" class="quiet example" data-question="Un modèle rapide et bon pour un chatbot" data-query='{"task":"general","sort":"fast"}'>Rapide et bon pour un chatbot</button>
@@ -46,7 +47,7 @@
     <form id="filters">
       <div class="filters">
         <label>Pour quoi faire ?
-          <select name="task"><option value="general">Usage général</option><option value="code">Code</option><option value="agentic">Agents / outils</option></select>
+          <select name="task"><option value="general">Usage général</option><option value="redaction">Rédaction (SEO / GEO)</option><option value="redaction_fr">Rédaction en français</option><option value="code">Code</option><option value="agentic">Agents / outils</option><option value="documents">Analyse de documents longs</option></select>
         </label>
         <label>Classer par
           <select name="sort"><option value="value">Rapport qualité/prix</option><option value="quality">Qualité</option><option value="price">Prix le plus bas</option><option value="usage">Usage réel</option><option value="fast">Rapide + qualité/prix</option></select>
@@ -96,7 +97,8 @@
 
   <section class="faq">
     <h2>Comment le score est-il calculé ?</h2>
-    <p>En gros : <strong>la qualité rapportée au prix</strong>, avec un petit bonus pour les modèles réellement adoptés. La qualité, c'est la position du modèle dans chaque classement (Artificial Analysis, LMArena, Epoch AI), convertie en percentile puis moyennée. Un modèle noté par une seule source est tiré vers la moyenne : il ne peut pas dépasser 75. Le prix est un prix mixte entrée/sortie, pondéré selon la tâche : un agent de code lit beaucoup plus de tokens qu'il n'en écrit, donc le prix d'entrée pèse 90 % pour le code et 95 % pour les agents.</p>
+    <p>En gros : <strong>la qualité rapportée au prix</strong>, avec un petit bonus pour les modèles réellement adoptés. La qualité, c'est la position du modèle dans chaque classement (Artificial Analysis, LMArena, Epoch AI), convertie en percentile puis moyennée. Un modèle noté par une seule source est tiré vers la moyenne : il ne peut pas dépasser 75. Le prix est un prix mixte entrée/sortie, pondéré selon la tâche : un agent de code lit beaucoup plus de tokens qu'il n'en écrit, donc le prix d'entrée pèse 90 % pour le code et 95 % pour les agents. À l'inverse, rédiger part d'un brief court pour produire un long texte : le prix de sortie y pèse 60 %.</p>
+    <p>Chaque usage a ses propres juges. Pour la <strong>rédaction</strong>, ce sont les classements LMArena de rédaction créative et de respect des consignes, plus l'indice d'intelligence d'Artificial Analysis ; en <strong>rédaction en français</strong>, le classement des prompts en français remplace cet indice, parce qu'un bon modèle en anglais n'est pas toujours bon en français. Pour l'<strong>analyse de documents longs</strong>, c'est le classement des requêtes longues.</p>
     <p>Le prix est pris en racine carrée : un modèle deux fois plus cher doit être environ 41 % meilleur pour garder le même score. C'est un choix, et il est affiché sous chaque tableau.</p>
     <h2>Pourquoi un percentile plutôt que la note brute ?</h2>
     <p>Parce que les classements ne parlent pas la même langue : un indice sur 100 chez Artificial Analysis, un Elo chez LMArena, un indice de capacités chez Epoch AI. Le percentile les ramène tous à la même question : combien de modèles font moins bien ? Revers de la médaille, <strong>c'est un rang, pas un écart</strong> : deux modèles très proches peuvent être séparés de quelques points.</p>
