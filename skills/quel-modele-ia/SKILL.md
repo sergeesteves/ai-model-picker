@@ -26,7 +26,7 @@ sortie de progression sur stderr) ; ensuite tout est lu dans le cache.
 | rédaction, chat, résumé, analyse, « en général », rien de précis | `--task general` (défaut) |
 | « rapport qualité/prix », « meilleur pour le prix », rien de précis | `--sort value` (défaut) |
 | « le meilleur », « le plus performant », budget indifférent | `--sort quality` |
-| « le moins cher », « le plus économique » | `--sort price` + **toujours** un `--min-quality` (60 si « correct/décent », 70 si « bon », 80 si « excellent ») |
+| « le moins cher », « le plus économique » | `--sort price` + **toujours** un `--min-quality` (50 si « correct/décent » ou rien de précisé, 60 si « bon », 70 si « excellent ») |
 | « le plus utilisé », « le plus adopté » | `--sort usage` |
 | « chez OpenAI », « modèles Google » | `--author openai` (préfixe du slug OpenRouter : openai, anthropic, google, deepseek, z-ai, moonshotai, qwen, x-ai, mistralai, meta, minimax, tencent, xiaomi…) |
 | « contexte d'un million » | `--min-context 1000000` |
