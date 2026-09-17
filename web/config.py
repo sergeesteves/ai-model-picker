@@ -31,7 +31,7 @@ class Settings:
     # LLM (OmniRoute, API compatible OpenAI) : uniquement pour traduire une question libre en filtres
     llm_base_url: str = os.getenv("LLM_BASE_URL", "https://omniroute.creapulse.fr/api/v1").rstrip("/")
     llm_api_key: str = os.getenv("LLM_API_KEY", "")
-    llm_model: str = os.getenv("LLM_MODEL", "mistralai/mistral-small-3.2-24b-instruct")
+    llm_model: str = os.getenv("LLM_MODEL", "openrouter/mistralai/mistral-small-3.2-24b-instruct")
     llm_timeout_s: float = float(os.getenv("LLM_TIMEOUT_S") or 20)
 
     # Garde-fous (en mémoire, remis à zéro chaque jour ; le plafond budgétaire dur reste celui d'OmniRoute)
