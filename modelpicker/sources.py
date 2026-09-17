@@ -12,6 +12,7 @@ import io
 import json
 import logging
 import os
+import socket
 import time
 import urllib.parse
 import urllib.request
@@ -46,6 +47,24 @@ EPOCH_ZIP_URL = "https://epoch.ai/data/benchmark_data.zip"
 SOURCES = ("openrouter_models", "openrouter_usage", "openrouter_perf", "lmarena", "epoch")
 
 
+def _force_ipv4_if_asked() -> None:
+    """Certains conteneurs annoncent l'IPv6 sans route utilisable : la connexion reste pendue au lieu
+    d'échouer, et le timeout de socket ne couvre pas la résolution. FORCE_IPV4=1 ne garde que l'IPv4."""
+    if os.getenv("FORCE_IPV4", "").strip().lower() not in ("1", "true", "yes", "on"):
+        return
+    original = socket.getaddrinfo
+
+    def ipv4_only(host, port, family=0, type=0, proto=0, flags=0):
+        infos = original(host, port, socket.AF_INET, type, proto, flags)
+        return infos or original(host, port, family, type, proto, flags)
+
+    socket.getaddrinfo = ipv4_only
+    log.info("réseau : résolution limitée à l'IPv4 (FORCE_IPV4)")
+
+
+_force_ipv4_if_asked()
+
+
 def cache_dir() -> Path:
     base = os.environ.get("MODEL_PICKER_CACHE")
     return Path(base) if base else Path.home() / ".cache" / "ai-model-picker"
@@ -60,6 +79,7 @@ def _http_get(url: str, timeout: int = 90, retries: int = 3) -> bytes:
                 return resp.read()
         except Exception as exc:  # réseau, 5xx, timeout
             last = exc
+            log.warning("GET %s : tentative %d en échec (%s)", url.split("?")[0], attempt + 1, exc)
             time.sleep(1.5 * (attempt + 1))
     raise RuntimeError(f"GET {url} : {last}")
 
@@ -178,6 +198,7 @@ def _hf_parquet_rows(config: str) -> list[dict]:
     """Voie rapide : fichiers parquet du split `latest` (1 requête par fichier), si pyarrow est installé."""
     import pyarrow.parquet as pq  # dépendance optionnelle
 
+    log.info("lmarena : lecture de l'index parquet de %s", config)
     tree = json.loads(_http_get(f"{HF_TREE_URL}/{config}", timeout=30, retries=2).decode("utf-8"))
     files = sorted(f["path"] for f in tree if f.get("path", "").startswith(f"{config}/latest-") and f["path"].endswith(".parquet"))
     if not files:
@@ -185,6 +206,7 @@ def _hf_parquet_rows(config: str) -> list[dict]:
     rows = []
     for path in files:
         started = time.monotonic()
+        log.info("lmarena : téléchargement de %s", path)
         blob = _http_get(f"{HF_RESOLVE_URL}/{path}", timeout=45, retries=2)
         rows.extend(pq.read_table(io.BytesIO(blob)).to_pylist())
         log.info("lmarena : %s lu en parquet (%d Ko, %.1f s)", path, len(blob) // 1024, time.monotonic() - started)
