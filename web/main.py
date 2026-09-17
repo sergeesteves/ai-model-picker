@@ -99,10 +99,15 @@ async def index(request: Request):
 async def health():
     from modelpicker import sources
     lmarena = (store.lmarena or {}).get("data") or {}
+    try:
+        import pyarrow  # noqa: F401
+        parquet = True
+    except Exception:
+        parquet = False
     return {"status": "ok", "data_ready": store.ready,
             "prices_date": (store.models or {}).get("source_date"), "llm_enabled": settings.llm_enabled,
             "sources": {"lmarena_boards": sorted(lmarena), "lmarena_date": (store.lmarena or {}).get("source_date"),
-                        "usage_days": len(store.history), "perf_days": len(store.perf)},
+                        "usage_days": len(store.history), "perf_days": len(store.perf), "pyarrow": parquet},
             "needs_refresh": sources.needs_refresh(), "cache": str(sources.cache_dir())}
 
 

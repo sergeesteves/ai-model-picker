@@ -253,9 +253,10 @@ def _hf_rows(config: str) -> list[dict]:
     La voie parquet est bornée dans le temps : en prod, l'import de pyarrow s'est déjà bloqué sans jamais
     rendre la main (aucune trace, collecte figée). Passé le délai, on bascule sur l'API plutôt que d'attendre.
     """
+    log.info("lmarena : collecte de %s", config)
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(_hf_parquet_rows, config).result(timeout=HF_PARQUET_DEADLINE_S)
+        return pool.submit(_hf_parquet_rows, config).result(timeout=HF_PARQUET_DEADLINE_S)
     except concurrent.futures.TimeoutError:
         log.warning("lmarena : voie parquet trop lente pour %s (> %d s), repli sur l'API /rows",
                     config, HF_PARQUET_DEADLINE_S)
@@ -263,6 +264,9 @@ def _hf_rows(config: str) -> list[dict]:
         log.info("lmarena : pyarrow absent, repli sur l'API /rows pour %s", config)
     except Exception as exc:  # réseau, 5xx, parquet illisible : le repli reste possible
         log.warning("lmarena : parquet indisponible pour %s (%s), repli sur l'API /rows", config, exc)
+    finally:
+        # wait=False : un thread bloqué (import pyarrow figé, vu en prod) ne doit pas retenir la collecte.
+        pool.shutdown(wait=False, cancel_futures=True)
     return _hf_api_rows(config)
 
 
