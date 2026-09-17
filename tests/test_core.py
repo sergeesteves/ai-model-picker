@@ -127,6 +127,18 @@ class TestStaleness(unittest.TestCase):
         self.assertFalse(is_complete("lmarena", {"data": {}}))
         self.assertTrue(is_complete("openrouter_usage", USAGE[0]))
 
+    def test_collect_refetches_an_incomplete_snapshot(self):
+        import json as _json
+        import tempfile
+        from pathlib import Path as _Path
+        from modelpicker import sources
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _Path(tmp) / "lmarena.json"
+            path.write_text(_json.dumps({"data": {"lmarena_text": {}}}), encoding="utf-8")
+            self.assertFalse(sources._cached_and_complete("lmarena", path))  # tableaux manquants
+            path.write_text(_json.dumps({"data": {k: {} for k in sources.LMARENA_BOARDS}}), encoding="utf-8")
+            self.assertTrue(sources._cached_and_complete("lmarena", path))
+
     def test_missing_sources_are_warned_not_silent(self):
         res = recommend(MODELS, USAGE, LMARENA, None, {"task": "redaction_fr", "min_quality": 0},
                         today="2026-09-17")

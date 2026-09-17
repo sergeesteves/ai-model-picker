@@ -328,14 +328,23 @@ def _snap_dir(day: str) -> Path:
     return cache_dir() / "snapshots" / day
 
 
+def _cached_and_complete(name: str, path: Path) -> bool:
+    """Un instantané du jour ne dispense d'une collecte que s'il contient tout ce que le code attend."""
+    try:
+        return is_complete(name, json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
 def collect(force: bool = False, only: list[str] | None = None, log=print) -> dict:
     """Collecte les sources absentes du jour (ou toutes si force). Renvoie {source: statut}."""
     day = dt.date.today().isoformat()
     status = {}
     for name in only or SOURCES:
         path = _snap_dir(day) / f"{name}.json"
-        if path.exists() and not force:
+        if path.exists() and not force and _cached_and_complete(name, path):
             status[name] = "déjà en cache"
+            log(f"  {name} : {status[name]}")
             continue
         try:
             snap = FETCHERS[name]()
