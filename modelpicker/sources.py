@@ -326,6 +326,27 @@ def load_usage_history(days: int = 7) -> list[dict]:
     return load_history("openrouter_usage", days)
 
 
+def is_complete(name: str, snap: dict | None) -> bool:
+    """Un instantané du jour peut être périmé par le code : une source à laquelle on vient d'ajouter un
+    tableau (ex. une catégorie LMArena) doit être recollectée, sinon la nouveauté n'arrive que le lendemain."""
+    if not snap or not snap.get("data"):
+        return False
+    if name == "lmarena":
+        return set(LMARENA_BOARDS).issubset(snap["data"])
+    return True
+
+
 def needs_refresh() -> list[str]:
     day = dt.date.today().isoformat()
-    return [n for n in SOURCES if not (_snap_dir(day) / f"{n}.json").exists()]
+    missing = []
+    for name in SOURCES:
+        path = _snap_dir(day) / f"{name}.json"
+        if not path.exists():
+            missing.append(name)
+            continue
+        try:
+            if not is_complete(name, json.loads(path.read_text(encoding="utf-8"))):
+                missing.append(name)
+        except (OSError, json.JSONDecodeError):
+            missing.append(name)
+    return missing

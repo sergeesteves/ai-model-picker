@@ -106,7 +106,8 @@
     const un = res.unscored_popular || [];
     $('#unscored').hidden = !un.length;
     $('#unscored').textContent = un.length ? 'Très utilisés mais pas encore évalués pour cette tâche (donc non classés) : ' + un.map((m) => `${m.name} (${m.usage_rank}ᵉ en usage)`).join(', ') + '.' : '';
-    $('#caveats').innerHTML = res.caveats.map((c) => `<p>${esc(c)}</p>`).join('');
+    $('#caveats').innerHTML = (res.warnings || []).map((w) => `<p><strong>${esc(w)}</strong></p>`).join('')
+      + res.caveats.map((c) => `<p>${esc(c)}</p>`).join('');
     $('#result').hidden = false;
     $('#result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }

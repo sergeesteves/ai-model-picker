@@ -120,6 +120,20 @@ class TestTasks(unittest.TestCase):
         self.assertGreater(tasks["documents"]["input_share"], 0.9)  # documents longs : l'entrée domine
 
 
+class TestStaleness(unittest.TestCase):
+    def test_incomplete_lmarena_snapshot_is_refetched(self):
+        from modelpicker.sources import is_complete
+        self.assertFalse(is_complete("lmarena", LMARENA))          # tableaux ajoutés depuis
+        self.assertFalse(is_complete("lmarena", {"data": {}}))
+        self.assertTrue(is_complete("openrouter_usage", USAGE[0]))
+
+    def test_missing_sources_are_warned_not_silent(self):
+        res = recommend(MODELS, USAGE, LMARENA, None, {"task": "redaction_fr", "min_quality": 0},
+                        today="2026-09-17")
+        self.assertEqual(res["results"], [])
+        self.assertTrue(res["warnings"] and "Aucune source" in res["warnings"][0])
+
+
 class TestSpeed(unittest.TestCase):
     def run_query(self, **q):
         return recommend(MODELS, USAGE, LMARENA, None, {"top": 10, "min_quality": 0, **q},

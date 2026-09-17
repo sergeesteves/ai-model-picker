@@ -100,6 +100,9 @@ def to_markdown(res: dict) -> str:
         lines.append("")
         lines.append("**Très utilisés mais sans score de qualité pour cette tâche** (exclus du classement) : "
                      + ", ".join(f"{m['name']} (#{m['usage_rank']} usage)" for m in res["unscored_popular"]))
+    for w in res.get("warnings") or []:
+        lines.append("")
+        lines.append(f"> ⚠️ {w}")
     lines.append("")
     for c in res["caveats"]:
         lines.append(f"_{c}_")

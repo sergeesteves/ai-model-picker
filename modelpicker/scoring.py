@@ -227,6 +227,13 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
     perf = build_perf(perf_history or [])
     needs_perf = q["sort"] == "fast" or q["max_latency_ms"] is not None or q["min_throughput"] is not None
     task_sources = [s for s in task["sources"] if s in signals]
+    warnings = []
+    if not task_sources:
+        warnings.append(f"Aucune source de qualité disponible pour « {task['label']} » : classements à collecter "
+                        "(python -m modelpicker collect --only lmarena --force). Aucun modèle ne peut être classé.")
+    elif len(task_sources) < len(task["sources"]):
+        missing = ", ".join(SOURCE_LABELS[s] for s in task["sources"] if s not in signals)
+        warnings.append(f"Sources absentes du cache pour cette tâche : {missing}.")
 
     results, unscored_popular = [], []
     for mid, m in index.models.items():
@@ -330,6 +337,7 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
         "speed_source": {"label": "OpenRouter · performances par hébergeur (médianes sur 30 min, pondérées par requêtes)",
                          "date": perf["date"], "first_date": perf.get("first_date"), "days": perf["days"],
                          "measured_at": perf.get("measured_at")},
+        "warnings": warnings,
         "total_candidates": len(results),
         "results": results[: q["top"]],
         "unscored_popular": sorted(unscored_popular, key=lambda x: x["usage_rank"])[:5],
