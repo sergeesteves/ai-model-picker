@@ -20,10 +20,19 @@
 
 ## v2 : outil web sous `www.creapulse.fr/outils/…`
 
+Décision (2026-09-17) : **page vitrine d'expertise, gratuite, non monétisée**.
+
 - Micro-app (même patron que le générateur de voix de marque) qui appelle `scoring.recommend()`, cache
-  rafraîchi par tâche planifiée côté serveur.
-- Jamais de sous-domaine ; identité via WordPress + PMPro (jeton HMAC émis par creapulse-tools).
-- Palier gratuit : questions prédéfinies ; palier membre : filtres complets, export JSON, alertes.
+  rafraîchi par tâche planifiée côté serveur. Jamais de sous-domaine.
+- Deux entrées :
+  - **Formulaire** (tâche, tri, éditeur, contraintes) : déterministe, 0 appel LLM.
+  - **Question libre** : un seul appel LLM, qui traduit la question en requête JSON (schéma = `scoring.DEFAULTS`).
+    Le LLM ne classe rien et ne rédige pas la réponse : phrase de synthèse générée par gabarit à partir du résultat.
+- Garde-fous de coût : petit modèle économique via OmniRoute avec une clé dédiée et un budget quotidien plafonné ;
+  sortie validée par liste blanche (valeur hors liste = ignorée) ; cache des questions déjà vues ; limite par IP.
+  Budget épuisé → la question libre est désactivée pour la journée, le formulaire continue de marcher.
+- Ordre de grandeur : ~1 300 tokens d'entrée + ~120 de sortie par question ; avec un modèle à ~0,10 $ / 0,30 $
+  le million, ≈ 0,00015 $ la question, soit ~6 500 questions pour 1 $.
 - Charte visuelle et voix Creapulse (skills `creapulse-brand-design` / `creapulse-brand-voice`) pour l'interface
   et les textes.
 
