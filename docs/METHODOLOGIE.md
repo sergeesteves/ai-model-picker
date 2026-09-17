@@ -1,0 +1,93 @@
+# Méthodologie
+
+Le classement est **déterministe** : mêmes instantanés + même requête = même tableau. Aucun LLM
+n'intervient dans le calcul. Tous les paramètres sont affichés dans la sortie.
+
+## 1. Sources
+
+| Signal | Source | Accès | Fraîcheur | Couverture (sept. 2026) |
+|---|---|---|---|---|
+| Prix, contexte, modalités, poids ouverts | OpenRouter `GET /api/v1/models` | officiel, sans clé | quotidienne | ~440 modèles |
+| Qualité : Intelligence / Coding / Agentic Index | Artificial Analysis, champ `benchmarks.artificial_analysis` de l'API OpenRouter | idem | quotidienne | ~187 modèles |
+| Qualité : préférence humaine (Text, Coding, WebDev) et Agent | LMArena, dataset Hugging Face `lmarena-ai/leaderboard-dataset`, split `latest` | données ouvertes | quelques jours | ~400 entrées text, ~130 webdev, ~46 agent |
+| Qualité : Epoch Capabilities Index | Epoch AI, `benchmark_data.zip` | données ouvertes (CC-BY) | ~2 semaines | ~270 modèles |
+| Usage réel | OpenRouter `GET /api/frontend/v1/rankings/models?view=day` | **non documenté**, sans clé | J-1 | tous les modèles servis |
+
+Pièges connus, gérés dans le code :
+
+- Un modèle a plusieurs ids (`:batch`, `:free`, `:thinking`) et des alias glissants (`~openai/…-latest`) :
+  seuls les ids sans `:` ni `~` sont classés, pour ne pas récupérer un tarif batch ou gratuit.
+- L'usage est indexé par `model_permaslug` daté (`openai/gpt-5.6-luna-20260709`) : jointure sur
+  `canonical_slug`, repli sur le slug sans suffixe de date.
+- Le jour courant du classement d'usage est partiel : on prend toujours la dernière journée complète.
+- Les vues week/month de l'endpoint d'usage ne sont pas des séries : l'historique est reconstitué par le
+  cache local (moyenne sur les 7 derniers instantanés disponibles).
+- L'éditeur est le préfixe du slug (`openai/`, `z-ai/`…). Les pages `/provider/…` d'OpenRouter comptent
+  par hébergeur, pas par éditeur : non utilisées.
+- LMArena publie les modèles par niveau d'effort (`claude-opus-5-max`, `…-high`) : le rapprochement retire
+  ces suffixes et garde **le meilleur** niveau publié.
+- Le endpoint `/filter` du dataset viewer Hugging Face renvoie des 500 intermittents et `/rows` limite à
+  environ 50 pages : la collecte lit les fichiers parquet (1 requête par tableau) si `pyarrow` est installé,
+  sinon `/rows` à rythme lent.
+
+## 2. Rapprochement des noms
+
+`normalize` : minuscules, préfixe éditeur retiré, séparateurs → `-`. Essais successifs : clé exacte, clé
+sans jetons de variante (effort, budget `32k`, quantization, date, harnais), clé compacte sans tirets
+(seulement si non ambiguë). Ce qui résiste se règle dans `data/aliases.json`.
+`python -m modelpicker coverage` liste les meilleurs noms non rapprochés.
+
+## 3. Formule
+
+**Qualité Q (0-100).** Pour chaque source retenue par la tâche, on convertit le score du modèle en
+**percentile** dans cette source (part des autres entrées moins bien notées, ex æquo pour moitié). Les
+échelles hétérogènes (indice 0-100, Elo, ECI) deviennent ainsi comparables. Puis :
+
+```
+Q = (somme des percentiles des n sources disponibles + 50) ÷ (n + 1)
+```
+
+Le « + 50 » est un a priori neutre qui compte pour une source : un modèle noté par une seule source ne peut
+pas dépasser 75, un modèle confirmé par trois sources peut atteindre 87,5. Le nombre de sources est affiché
+à côté de chaque score.
+
+| Tâche | Sources | Part d'entrée du prix mixte |
+|---|---|---|
+| `general` | AA Intelligence, LMArena Text, Epoch ECI | 80 % |
+| `code` | AA Coding, LMArena Coding, LMArena WebDev | 90 % |
+| `agentic` | AA Agentic, LMArena Agent | 95 % |
+
+Profils modifiables dans `data/tasks.json`. Repère : sur OpenRouter, 97 % des tokens traités le
+16/09/2026 étaient des tokens d'entrée (trafic dominé par les agents de code).
+
+**Prix mixte P ($ par million de tokens).** `P = s × prix d'entrée + (1 − s) × prix de sortie`, avec `s` la
+part d'entrée de la tâche (`--input-share` pour la forcer). Plancher 0,05 $ dans la formule.
+
+**Adoption A (0-100).** Percentile du modèle dans le classement d'usage OpenRouter (tokens/jour, moyenne
+sur les instantanés disponibles) ; 0 s'il n'y figure pas.
+
+**Score (tri `value`).**
+
+```
+score = Q × (1 + α × A / 100) ÷ max(P, 0,05)^β      α = 0,25   β = 0,5
+```
+
+- β = 0,5 : un prix doublé doit être compensé par +41 % de qualité. β = 1 favorise fortement les
+  modèles très bon marché, β = 0 revient à trier par qualité.
+- α = 0,25 : l'adoption départage (au plus +25 %) sans pouvoir faire gagner un modèle médiocre.
+- Plancher de qualité par défaut à 60 pour ce tri (un « rapport qualité/prix » suppose une qualité correcte).
+
+Autres tris : `quality` (Q décroissant, puis prix), `price` (P croissant, puis Q), `usage` (tokens/jour).
+Un modèle sans aucun score pour la tâche n'est jamais classé ; s'il figure dans le top 25 d'usage, il est
+signalé à part.
+
+## 4. Biais à assumer
+
+- **Usage = développeurs via l'API OpenRouter**, pas le grand public. OpenAI, Anthropic et Google sont
+  sous-représentés par rapport à leurs canaux directs ; les modèles économiques dominent mécaniquement le volume.
+- **Percentile = rang, pas écart** : deux modèles à 1 point d'Elo peuvent être séparés de plusieurs percentiles.
+- **Populations différentes** : les percentiles AA sont calculés sur les modèles d'OpenRouter, ceux de LMArena
+  et d'Epoch sur leurs propres tableaux, qui incluent d'anciens modèles.
+- **Niveau d'effort** : LMArena note souvent la version « max » ; le prix au token affiché ne dit rien du
+  surcroît de tokens de réflexion.
+- **Poids ouverts** = id Hugging Face déclaré sur OpenRouter (heuristique).

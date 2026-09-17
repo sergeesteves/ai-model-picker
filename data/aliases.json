@@ -1,0 +1,5 @@
+{
+  "_doc": "Rapprochements manuels nom de source -> id OpenRouter, quand la normalisation automatique échoue ou se trompe. Clés : 'lmarena' (tous tableaux) et 'epoch'. Valeur \"\" = ne jamais rapprocher. Lancer `python -m modelpicker coverage` pour voir les noms non rapprochés.",
+  "lmarena": {},
+  "epoch": {}
+}

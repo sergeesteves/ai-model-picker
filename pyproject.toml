@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-model-picker"
+version = "0.1.0"
+description = "Quel modèle IA choisir : qualité × prix × usage réel (OpenRouter, Artificial Analysis, LMArena, Epoch AI)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+fast = ["pyarrow>=14"]
+
+[project.scripts]
+modelpicker = "modelpicker.cli:main"
+
+[tool.setuptools]
+packages = ["modelpicker"]

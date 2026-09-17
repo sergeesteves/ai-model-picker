@@ -1,0 +1,18 @@
+{
+  "_doc": "Profils de tâche. input_share = part des tokens d'entrée dans le prix mixte. sources = signaux de qualité moyennés (en percentiles). Voir docs/METHODOLOGIE.md.",
+  "general": {
+    "label": "usage général",
+    "input_share": 0.8,
+    "sources": ["aa_intelligence", "lmarena_text", "epoch_eci"]
+  },
+  "code": {
+    "label": "code",
+    "input_share": 0.9,
+    "sources": ["aa_coding", "lmarena_coding", "lmarena_webdev"]
+  },
+  "agentic": {
+    "label": "agents / outils",
+    "input_share": 0.95,
+    "sources": ["aa_agentic", "lmarena_agent"]
+  }
+}
