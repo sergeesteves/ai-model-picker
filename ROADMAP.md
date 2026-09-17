@@ -16,11 +16,12 @@
       benchmarks, et couverture des nouveautés absentes du relais OpenRouter. Clé en variable d'environnement,
       jamais dans le repo.
 - [ ] SWE-bench / Terminal-Bench (Epoch) comme sources `code` et `agentic` supplémentaires.
-- [ ] **Vitesse / latence** (demande 2026-09-17, pour le chat et les usages temps réel) : profil « rapide »
-      prix × latence × qualité. Constat : l'API publique OpenRouter `/models/{id}/endpoints` renvoie
-      `latency_last_30m` / `throughput_last_30m` à `null` sans authentification (seul `uptime` est rempli).
-      Piste principale : API Artificial Analysis (clé gratuite) = vitesse de sortie (tokens/s) et délai avant
-      le premier token par modèle. À vérifier : conditions d'usage, et si l'endpoint OpenRouter authentifié remplit la latence.
+- [x] **Vitesse / latence** (2026-09-17) : tri `fast` + filtres, source = stats de performance OpenRouter
+      (`/api/frontend/v1/stats/endpoint`, onglet Performance). Voir docs/METHODOLOGIE.md.
+- [ ] Artificial Analysis via leur API (clé `AA_API_KEY` en place dans Coolify, attribution obligatoire vers
+      https://artificialanalysis.ai/, 1 000 requêtes/jour) : élargir la couverture qualité (nouveautés absentes
+      du relais OpenRouter, benchmarks détaillés GPQA, HLE, Terminal-Bench…). Rapprochement des variantes
+      d'effort à concevoir.
 - [ ] Intégration continue : tests unitaires sur chaque push.
 
 ## v2 : outil web sous `www.creapulse.fr/outils/quel-modele-ia` (en ligne le 2026-09-17)

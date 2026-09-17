@@ -22,6 +22,8 @@ USER_AGENT = "ai-model-picker/0.1"
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 # Endpoint non documenté (celui de la page Rankings) : seule la dernière date est complète.
 OPENROUTER_RANKINGS_URL = "https://openrouter.ai/api/frontend/v1/rankings/models?view=day"
+# Endpoint non documenté de l'onglet Performance d'une page modèle : stats par hébergeur (30 dernières minutes)
+OPENROUTER_PERF_URL = "https://openrouter.ai/api/frontend/v1/stats/endpoint"
 HF_ROWS_URL = "https://datasets-server.huggingface.co/rows"
 HF_TREE_URL = "https://huggingface.co/api/datasets/lmarena-ai/leaderboard-dataset/tree/main"
 HF_RESOLVE_URL = "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset/resolve/main"
@@ -35,7 +37,7 @@ LMARENA_BOARDS = {
 }
 EPOCH_ZIP_URL = "https://epoch.ai/data/benchmark_data.zip"
 
-SOURCES = ("openrouter_models", "openrouter_usage", "lmarena", "epoch")
+SOURCES = ("openrouter_models", "openrouter_usage", "openrouter_perf", "lmarena", "epoch")
 
 
 def cache_dir() -> Path:
@@ -119,6 +121,50 @@ def fetch_openrouter_usage() -> dict:
         a["requests"] += r.get("count") or 0
         a["tool_calls"] += r.get("total_tool_calls") or 0
     return {"source_date": day, "data": by_slug}
+
+
+# ---------------------------------------------------------------- OpenRouter : vitesse et latence
+def _perf_candidates(models: list[dict]) -> list[dict]:
+    from .match import is_listed_model  # import local : match n'importe pas sources
+
+    return [m for m in models if is_listed_model(m) and m.get("canonical_slug")
+            and m.get("price_in") is not None and m["price_in"] >= 0 and m.get("price_out") is not None
+            and not (m["price_in"] == 0 and m["price_out"] == 0) and "text" in (m.get("output_modalities") or [])]
+
+
+def fetch_openrouter_perf() -> dict:
+    """Latence médiane avant le premier token et débit médian par hébergeur, fenêtre des 30 dernières minutes.
+
+    Endpoint non documenté de la page modèle d'OpenRouter (onglet Performance) : un appel par modèle,
+    espacés pour rester raisonnable (~323 appels, ~3 min).
+    """
+    snap = load_latest("openrouter_models")
+    if not snap:
+        raise RuntimeError("openrouter_perf : collecter openrouter_models d'abord")
+    candidates = _perf_candidates(snap["data"])
+    data, failures = {}, 0
+    for m in candidates:
+        qs = urllib.parse.urlencode({"latencyMetric": "latency", "perfWorkload": "text_generation",
+                                     "permaslug": m["canonical_slug"], "variant": "standard"})
+        try:
+            rows = json.loads(_http_get(f"{OPENROUTER_PERF_URL}?{qs}", timeout=30, retries=2).decode("utf-8"))["data"]
+        except Exception:
+            failures += 1
+            continue
+        endpoints = []
+        for e in rows or []:
+            st = e.get("stats") or {}
+            if st.get("p50_latency") is None and st.get("p50_throughput") is None:
+                continue
+            endpoints.append({"provider": e.get("provider_name"), "status": e.get("status"),
+                              "latency_ms": st.get("p50_latency"), "throughput_tps": st.get("p50_throughput"),
+                              "requests": st.get("request_count") or 0})
+        if endpoints:
+            data[m["id"]] = endpoints
+        time.sleep(0.3)
+    if candidates and failures > len(candidates) / 2:
+        raise RuntimeError(f"openrouter_perf : {failures}/{len(candidates)} appels en échec")
+    return {"source_date": dt.date.today().isoformat(), "measured_at": _now_iso(), "data": data}
 
 
 # ---------------------------------------------------------------- LMArena (Hugging Face)
@@ -208,6 +254,7 @@ def fetch_epoch() -> dict:
 FETCHERS = {
     "openrouter_models": fetch_openrouter_models,
     "openrouter_usage": fetch_openrouter_usage,
+    "openrouter_perf": fetch_openrouter_perf,
     "lmarena": fetch_lmarena,
     "epoch": fetch_epoch,
 }
@@ -254,11 +301,11 @@ def load_latest(name: str) -> dict | None:
     return None
 
 
-def load_usage_history(days: int = 7) -> list[dict]:
-    """Instantanés d'usage distincts par date de données (le plus récent d'abord), au plus `days`."""
+def load_history(name: str, days: int = 7) -> list[dict]:
+    """Instantanés distincts par date de données (le plus récent d'abord), au plus `days`."""
     seen, out = set(), []
     for day in _snapshot_days():
-        path = _snap_dir(day) / "openrouter_usage.json"
+        path = _snap_dir(day) / f"{name}.json"
         if not path.exists():
             continue
         snap = json.loads(path.read_text(encoding="utf-8"))
@@ -269,6 +316,10 @@ def load_usage_history(days: int = 7) -> list[dict]:
         if len(out) >= days:
             break
     return out
+
+
+def load_usage_history(days: int = 7) -> list[dict]:
+    return load_history("openrouter_usage", days)
 
 
 def needs_refresh() -> list[str]:

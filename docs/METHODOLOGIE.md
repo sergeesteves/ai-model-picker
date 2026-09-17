@@ -12,6 +12,7 @@ n'intervient dans le calcul. Tous les paramètres sont affichés dans la sortie.
 | Qualité : préférence humaine (Text, Coding, WebDev) et Agent | LMArena, dataset Hugging Face `lmarena-ai/leaderboard-dataset`, split `latest` | données ouvertes | quelques jours | ~400 entrées text, ~130 webdev, ~46 agent |
 | Qualité : Epoch Capabilities Index | Epoch AI, `benchmark_data.zip` | données ouvertes (CC-BY) | ~2 semaines | ~270 modèles |
 | Usage réel | OpenRouter `GET /api/frontend/v1/rankings/models?view=day` | **non documenté**, sans clé | J-1 | tous les modèles servis |
+| Latence et vitesse | OpenRouter `GET /api/frontend/v1/stats/endpoint?permaslug=…&variant=standard&latencyMetric=latency&perfWorkload=text_generation` (onglet Performance d'une page modèle) | **non documenté**, sans clé, 1 appel par modèle (~320/jour, espacés de 0,3 s) | médianes des 30 dernières minutes au moment de la collecte | modèles servis avec trafic |
 
 Pièges connus, gérés dans le code :
 
@@ -78,6 +79,27 @@ score = Q × (1 + α × A / 100) ÷ max(P, 0,05)^β      α = 0,25   β = 0,5
 - Plancher de qualité par défaut à 60 pour ce tri (un « rapport qualité/prix » suppose une qualité correcte).
 
 Autres tris : `quality` (Q décroissant, puis prix), `price` (P croissant, puis Q), `usage` (tokens/jour).
+
+**Tri `fast` (rapide + qualité/prix)**, pour le chat et les usages temps réel :
+
+```
+score rapide = score × (0,5 + R / 100)
+```
+
+- Pour chaque hébergeur d'un modèle, OpenRouter publie la **latence** médiane avant le premier token (ms) et le
+  **débit** médian (tokens/s) sur 30 minutes. On garde les hébergeurs en service (status 0) avec au moins
+  10 requêtes, puis on fait la moyenne **pondérée par leurs requêtes** (ce que reçoit un appel « typique »
+  routé par OpenRouter). Les instantanés quotidiens sont ensuite moyennés, jusqu'à 7 jours.
+- R (réactivité, 0-100) = moyenne du percentile de débit (plus haut = mieux) et du percentile de latence
+  (plus bas = mieux), parmi les modèles mesurés. Le modèle le plus réactif voit son score multiplié par 1,5,
+  le moins réactif par 0,5.
+- Filtres `max_latency_ms` et `min_throughput` ; un modèle sans mesure est exclu dès qu'un critère de vitesse
+  est demandé (on n'invente pas une vitesse).
+- Seuil de qualité par défaut à 60, comme pour `value`.
+- Pourquoi pas la vitesse d'Artificial Analysis : elle couvre ~190 variantes sur 650, son délai avant la
+  première réponse inclut la réflexion (150 s pour un modèle en effort maximal), et chaque niveau d'effort
+  devrait être rapproché d'un modèle OpenRouter. OpenRouter mesure le trafic réel, sur ses propres identifiants.
+
 Un modèle sans aucun score pour la tâche n'est jamais classé ; s'il figure dans le top 25 d'usage, il est
 signalé à part.
 
@@ -91,3 +113,6 @@ signalé à part.
 - **Niveau d'effort** : LMArena note souvent la version « max » ; le prix au token affiché ne dit rien du
   surcroît de tokens de réflexion.
 - **Poids ouverts** = id Hugging Face déclaré sur OpenRouter (heuristique).
+- **Vitesse instantanée** : médianes sur 30 minutes, qui varient avec l'heure de collecte, la charge des
+  hébergeurs et la longueur des réponses ; la moyenne sur plusieurs jours lisse en partie. Pour un modèle qui
+  réfléchit, la latence avant le premier token inclut souvent la réflexion.

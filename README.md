@@ -12,6 +12,9 @@ Ce qui le distingue : le croisement de trois signaux que les comparateurs sépar
 2. **Prix** : tarifs OpenRouter, pondérés entrée/sortie selon la tâche.
 3. **Adoption** : tokens réellement traités chaque jour sur OpenRouter.
 
+Et, pour le chat ou le temps réel, la **latence** et la **vitesse** mesurées par OpenRouter sur le trafic réel
+(tri `fast`).
+
 Le classement est **déterministe et reproductible** : formule affichée, aucun LLM dans le calcul.
 Méthode complète : [docs/METHODOLOGIE.md](docs/METHODOLOGIE.md).
 
@@ -39,11 +42,12 @@ python -m modelpicker recommend --task code --open-weights --format json
 | Option | Rôle |
 |---|---|
 | `--task general\|code\|agentic` | sources de qualité et pondération du prix |
-| `--sort value\|quality\|price\|usage` | rapport qualité/prix (défaut), qualité, prix, adoption |
+| `--sort value\|quality\|price\|usage\|fast` | rapport qualité/prix (défaut), qualité, prix, adoption, rapide + qualité/prix |
 | `--author openai,anthropic` | éditeurs (préfixe du slug OpenRouter) |
 | `--min-context`, `--max-price`, `--min-quality`, `--min-sources` | contraintes |
 | `--open-weights`, `--input image`, `--tools` | poids ouverts, modalités d'entrée, appel d'outils |
 | `--input-share`, `--price-weight`, `--adoption-weight` | paramètres de la formule |
+| `--max-latency 1`, `--min-speed 100` | latence max (s) avant le premier token, vitesse min (tokens/s) |
 | `--format md\|json`, `--top N`, `--offline` | sortie et cache |
 
 Autres commandes : `collect` (télécharge les sources du jour, à planifier une fois par jour si besoin) et

@@ -8,6 +8,7 @@ SORT_LABELS = {
     "quality": "meilleure qualité",
     "price": "moins cher",
     "usage": "plus utilisé",
+    "fast": "meilleur compromis vitesse, qualité et prix",
 }
 
 
@@ -45,6 +46,10 @@ def to_markdown(res: dict) -> str:
         scope.append("entrée " + " + ".join(q["input_modalities"]))
     if q["tools"]:
         scope.append("appel d'outils")
+    if q.get("max_latency_ms") is not None:
+        scope.append(f"latence ≤ {_dec(q['max_latency_ms'] / 1000, 1)} s")
+    if q.get("min_throughput") is not None:
+        scope.append(f"vitesse ≥ {_dec(q['min_throughput'], 0)} tokens/s")
     if q["min_sources"] > 1:
         scope.append(f"≥ {q['min_sources']} sources")
     if q["min_quality"]:
@@ -54,22 +59,30 @@ def to_markdown(res: dict) -> str:
     if not res["results"]:
         lines.append("_Aucun modèle ne passe ces filtres._")
     else:
-        lines.append("| # | Modèle | Éditeur | Qualité (sources) | Prix mixte $/M | Entrée / sortie | Contexte | Usage/jour (rang) | Score |")
-        lines.append("|---|---|---|---|---|---|---|---|---|")
+        lines.append("| # | Modèle | Éditeur | Qualité (sources) | Prix mixte $/M | Entrée / sortie | Contexte | Latence | Vitesse | Usage/jour (rang) | Score |")
+        lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
         for r in res["results"]:
             detail = ", ".join(f"{SOURCE_SHORT[s]} {_dec(v['percentile'], 0)}" for s, v in r["quality_detail"].items())
             u = r["usage"]
             usage = f"{_tokens(u['tokens_per_day'])} (#{u['rank']})" if u else "—"
             ow = " ⓞ" if r["open_weights"] else ""
+            sp = r.get("speed") or {}
+            lat = f"{_dec(sp['latency_ms'] / 1000, 1)} s" if sp.get("latency_ms") is not None else "—"
+            tps = f"{_dec(sp['throughput_tps'], 0)} t/s" if sp.get("throughput_tps") is not None else "—"
+            fp = sp.get("fastest_provider") or {}
+            if fp.get("throughput_tps") and sp.get("throughput_tps") and fp["throughput_tps"] > sp["throughput_tps"] * 1.15:
+                tps += f" (max {_dec(fp['throughput_tps'], 0)} chez {fp['provider']})"
+            score = r["fast_score"] if q["sort"] == "fast" else r["score"]
             lines.append(
                 f"| {r['position']} | {r['name']}{ow} | {r['author']} | **{_dec(r['quality'], 0)}** "
                 f"({r['n_sources']}/{r['n_sources_possible']} : {detail}) | {_dec(r['blended_price_per_m'])} "
-                f"| {_dec(r['price_in_per_m'])} / {_dec(r['price_out_per_m'])} | {_ctx(r['context_length'])} "
-                f"| {usage} | {_dec(r['score'], 1)} |")
+                f"| {_dec(r['price_in_per_m'])} / {_dec(r['price_out_per_m'])} | {_ctx(r['context_length'])} | {lat} | {tps} "
+                f"| {usage} | {_dec(score, 1)} |")
     lines.append("")
     f = res["formula"]
     lines.append(f"**Formule** : score = {f['score']} avec α = {_dec(f['alpha'])}, β = {_dec(f['beta'])}. "
-                 f"Q = {f['Q']} ; A = {f['A']} ; P = {f['P']}.")
+                 f"Q = {f['Q']} ; A = {f['A']} ; P = {f['P']}."
+                 + (f" Tri rapide : {f['fast']}, R = {f['R']}." if "fast" in f else ""))
     lines.append(f"{res['total_candidates']} modèles classés après filtres. ⓞ = poids ouverts (id Hugging Face déclaré).")
     lines.append("")
     lines.append("**Sources** :")
@@ -79,6 +92,10 @@ def to_markdown(res: dict) -> str:
     span = f"moyenne {us['first_date']} → {us['date']} ({us['days']} j)" if us["days"] > 1 else f"journée du {us['date']}"
     lines.append(f"- {us['label']} — {span}")
     lines.append(f"- {res['prices_source']['label']} — prix du {res['prices_source']['date']}")
+    ss = res.get("speed_source") or {}
+    if ss.get("days"):
+        span = f"moyenne {ss['first_date']} → {ss['date']} ({ss['days']} j)" if ss["days"] > 1 else f"mesure du {ss['date']}"
+        lines.append(f"- {ss['label']} — {span}")
     if res["unscored_popular"]:
         lines.append("")
         lines.append("**Très utilisés mais sans score de qualité pour cette tâche** (exclus du classement) : "

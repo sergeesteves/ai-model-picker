@@ -17,6 +17,7 @@ class DataStore:
         self._lock = threading.Lock()
         self.models = self.lmarena = self.epoch = None
         self.history: list[dict] = []
+        self.perf: list[dict] = []
         self.authors: set[str] = set()
 
     def reload(self) -> None:
@@ -24,6 +25,7 @@ class DataStore:
         with self._lock:
             self.models = models
             self.history = sources.load_usage_history(7)
+            self.perf = sources.load_history("openrouter_perf", 7)
             self.lmarena = sources.load_latest("lmarena")
             self.epoch = sources.load_latest("epoch")
             self.authors = {m["id"].split("/", 1)[0] for m in (models or {}).get("data", []) if is_listed_model(m)}
@@ -34,7 +36,7 @@ class DataStore:
 
     def recommend(self, query: dict) -> dict:
         with self._lock:
-            return recommend(self.models, self.history, self.lmarena, self.epoch, query)
+            return recommend(self.models, self.history, self.lmarena, self.epoch, query, perf_history=self.perf)
 
     def refresh_blocking(self) -> None:
         missing = sources.needs_refresh()

@@ -19,7 +19,8 @@ def load_context(offline: bool, log) -> tuple:
     models = sources.load_latest("openrouter_models")
     if not models:
         raise SystemExit("Aucune donnée OpenRouter en cache : lancer `python -m modelpicker collect` avec accès réseau.")
-    return models, sources.load_usage_history(7), sources.load_latest("lmarena"), sources.load_latest("epoch")
+    return (models, sources.load_usage_history(7), sources.load_latest("lmarena"), sources.load_latest("epoch"),
+            sources.load_history("openrouter_perf", 7))
 
 
 def _csv(v: str | None) -> list[str]:
@@ -43,7 +44,8 @@ def main(argv=None) -> int:
 
     r = sub.add_parser("recommend", help="classer les modèles")
     r.add_argument("--task", choices=list(load_tasks()), default="general")
-    r.add_argument("--sort", choices=["value", "quality", "price", "usage"], default="value")
+    r.add_argument("--sort", choices=["value", "quality", "price", "usage", "fast"], default="value",
+                   help="fast = rapport qualité/prix pondéré par la réactivité (latence + débit)")
     r.add_argument("--author", help="éditeur(s) = préfixe du slug OpenRouter, ex. openai,anthropic")
     r.add_argument("--min-context", type=int, help="contexte minimum en tokens, ex. 1000000")
     r.add_argument("--max-price", type=float, help="prix mixte maximum en $ par million de tokens")
@@ -52,6 +54,8 @@ def main(argv=None) -> int:
     r.add_argument("--open-weights", action="store_true", help="poids ouverts uniquement")
     r.add_argument("--input", help="modalités d'entrée requises, ex. image,file")
     r.add_argument("--tools", action="store_true", help="appel d'outils requis")
+    r.add_argument("--max-latency", type=float, help="latence médiane max avant le premier token, en secondes")
+    r.add_argument("--min-speed", type=float, help="débit médian minimum, en tokens/s")
     r.add_argument("--input-share", type=float, help="part des tokens d'entrée dans le prix mixte (0-1)")
     r.add_argument("--price-weight", type=float, default=0.5, help="β, poids du prix (défaut 0,5)")
     r.add_argument("--adoption-weight", type=float, default=0.25, help="α, bonus d'adoption (défaut 0,25)")
@@ -71,7 +75,7 @@ def main(argv=None) -> int:
         return 0 if not any(v.startswith("ÉCHEC") for v in status.values()) else 1
 
     if args.cmd == "coverage":
-        models, history, lmarena, epoch = load_context(args.offline, log)
+        models, history, lmarena, epoch, _perf = load_context(args.offline, log)
         index = ModelIndex(models["data"])
         signals = build_signals(index, lmarena, epoch, models.get("source_date"))
         usage = build_usage(index, history)
@@ -90,13 +94,15 @@ def main(argv=None) -> int:
     if args.cmd != "recommend":
         p.print_help()
         return 2
-    models, history, lmarena, epoch = load_context(args.offline, log)
-    res = recommend(models, history, lmarena, epoch, {
+    models, history, lmarena, epoch, perf = load_context(args.offline, log)
+    res = recommend(models, history, lmarena, epoch, perf_history=perf, query={
         "task": args.task, "sort": args.sort, "top": args.top, "authors": _csv(args.author),
         "min_context": args.min_context, "max_price": args.max_price, "min_quality": args.min_quality,
         "min_sources": args.min_sources, "open_weights": args.open_weights, "input_modalities": _csv(args.input),
         "tools": args.tools, "input_share": args.input_share, "price_weight": args.price_weight,
         "adoption_weight": args.adoption_weight, "include_free": args.include_free,
+        "max_latency_ms": None if args.max_latency is None else int(args.max_latency * 1000),
+        "min_throughput": args.min_speed,
     })
     print(json.dumps(res, ensure_ascii=False, indent=2) if args.format == "json" else to_markdown(res))
     return 0

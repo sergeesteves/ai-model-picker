@@ -17,7 +17,7 @@ Réponds UNIQUEMENT par un objet JSON, sans texte autour.
 
 Champs (omets ceux que la question ne mentionne pas) :
 - "task" : "code" (programmation, dev, web, refactor), "agentic" (agents, outils, automatisation, tool calling), "general" (tout le reste : rédaction, chat, résumé, analyse, traduction).
-- "sort" : "value" (rapport qualité/prix ; À UTILISER PAR DÉFAUT dès que la question ne demande pas explicitement autre chose), "quality" (seulement si la question demande le meilleur ou le plus performant, budget indifférent), "price" (le moins cher, le plus économique), "usage" (le plus utilisé, le plus populaire). « Fiable » ne change pas le tri.
+- "sort" : "value" (rapport qualité/prix ; À UTILISER PAR DÉFAUT dès que la question ne demande pas explicitement autre chose), "quality" (seulement si la question demande le meilleur ou le plus performant, budget indifférent), "price" (le moins cher, le plus économique), "usage" (le plus utilisé, le plus populaire), "fast" (rapide, réactif, faible latence, temps réel, chat en direct, streaming). « Fiable » ne change pas le tri.
 - "authors" : liste d'éditeurs parmi : {authors}. Correspondances : OpenAI/GPT -> openai ; Claude -> anthropic ; Gemini/Gemma -> google ; Mistral -> mistralai ; Llama/Meta -> meta ; Grok/xAI -> x-ai ; Qwen/Alibaba -> qwen ; Kimi/Moonshot -> moonshotai ; GLM/Zhipu -> z-ai.
 - "min_context" : contexte minimum en tokens (entier ; « un million » -> 1000000, « 200k » -> 200000).
 - "max_price" : prix maximum en dollars par million de tokens (nombre).
@@ -26,13 +26,17 @@ Champs (omets ceux que la question ne mentionne pas) :
 - "open_weights" : true si open source, poids ouverts, auto-hébergeable, local.
 - "tools" : true si appel d'outils / function calling est requis.
 - "input_modalities" : parmi ["image", "audio", "video"], seulement si le modèle doit analyser des images, de l'audio ou de la vidéo. Les PDF et documents ne demandent AUCUNE modalité (le texte en est extrait).
+- "max_latency_ms" : latence maximum avant le premier token, en millisecondes (« moins d'une seconde » -> 1000).
+- "min_throughput" : vitesse minimum en tokens par seconde (« au moins 50 tokens/s » -> 50 ; « très rapide » sans chiffre -> 80).
 - "top" : nombre de modèles demandés (1 à 10).
 - "off_topic" : true si la question ne porte pas sur le choix d'un modèle de langage (et rien d'autre).
 
 Exemple : « le moins cher chez Google avec 1M de contexte et un niveau agentique correct »
 -> {{"task": "agentic", "sort": "price", "authors": ["google"], "min_context": 1000000, "min_quality": 50}}
 Exemple : « un modèle open source fiable pour résumer des PDF »
--> {{"task": "general", "sort": "value", "open_weights": true, "min_sources": 2}}"""
+-> {{"task": "general", "sort": "value", "open_weights": true, "min_sources": 2}}
+Exemple : « un modèle rapide et bon pour un chatbot, réponse en moins d'une seconde »
+-> {{"task": "general", "sort": "fast", "min_quality": 60, "max_latency_ms": 1000}}"""
 
 
 class AskError(RuntimeError):

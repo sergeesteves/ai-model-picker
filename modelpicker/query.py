@@ -6,9 +6,8 @@ Les paramètres de la formule (α, β, part d'entrée) ne sont pas exposés : la
 from __future__ import annotations
 
 from .render import _ctx, _dec
-from .scoring import load_tasks
+from .scoring import SORTS, load_tasks
 
-SORTS = ("value", "quality", "price", "usage")
 MODALITIES = ("image", "file", "audio", "video")
 
 
@@ -48,6 +47,8 @@ def sanitize_query(raw: dict, known_authors: set[str], max_top: int = 10) -> dic
         "tools": _bool(raw.get("tools", False)),
         "input_modalities": [m for m in _list(raw.get("input_modalities")) if m in MODALITIES],
         "top": _num(raw.get("top"), 1, max_top, int) or 5,
+        "max_latency_ms": _num(raw.get("max_latency_ms"), 50, 120_000, int),
+        "min_throughput": _num(raw.get("min_throughput"), 1, 5_000),
     }
     return q
 
@@ -56,7 +57,7 @@ def describe_query(q: dict) -> list[str]:
     """Libellés lisibles de la requête, pour afficher comment une question a été comprise."""
     tasks = load_tasks()
     sort_labels = {"value": "meilleur rapport qualité/prix", "quality": "meilleure qualité",
-                   "price": "le moins cher", "usage": "le plus utilisé"}
+                   "price": "le moins cher", "usage": "le plus utilisé", "fast": "rapide et bon rapport qualité/prix"}
     out = [tasks[q["task"]]["label"], sort_labels[q["sort"]]]
     if q["authors"]:
         out.append("éditeur : " + ", ".join(q["authors"]))
@@ -74,6 +75,10 @@ def describe_query(q: dict) -> list[str]:
         out.append("appel d'outils")
     if q["input_modalities"]:
         out.append("entrée " + " + ".join(q["input_modalities"]))
+    if q.get("max_latency_ms") is not None:
+        out.append(f"latence ≤ {_dec(q['max_latency_ms'] / 1000, 1)} s")
+    if q.get("min_throughput") is not None:
+        out.append(f"vitesse ≥ {_dec(q['min_throughput'], 0)} tokens/s")
     return out
 
 
@@ -90,7 +95,12 @@ def summary_sentence(res: dict) -> str:
         "quality": "Meilleure qualité",
         "price": "Le moins cher",
         "usage": "Le plus utilisé",
+        "fast": "Meilleur compromis vitesse, qualité et prix",
     }[sort]
+    sp = r.get("speed") or {}
+    speed = ""
+    if sp.get("latency_ms") is not None and sp.get("throughput_tps") is not None:
+        speed = f", premier token en {_dec(sp['latency_ms'] / 1000, 1)} s et {_dec(sp['throughput_tps'], 0)} tokens/s"
     return (f"{head} pour « {res['task_label']} » : {r['name']} ({r['author']}), "
             f"qualité {_dec(r['quality'], 0)}/100 sur {r['n_sources']} source{'s' if r['n_sources'] > 1 else ''}, "
-            f"{_dec(r['blended_price_per_m'])} $ le million de tokens en prix mixte{usage}.")
+            f"{_dec(r['blended_price_per_m'])} $ le million de tokens en prix mixte{speed}{usage}.")

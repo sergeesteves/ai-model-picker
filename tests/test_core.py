@@ -92,5 +92,46 @@ class TestScoring(unittest.TestCase):
         self.assertTrue(all(r["quality"] >= 60 for r in res["results"]))
 
 
+PERF = [{"source_date": "2026-09-17", "measured_at": "2026-09-17T10:00:00+00:00", "data": {
+    # big-5 : deux hébergeurs sains pondérés par requêtes + un hébergeur dégradé ignoré
+    "acme/big-5": [
+        {"provider": "A", "status": 0, "latency_ms": 1000, "throughput_tps": 40, "requests": 300},
+        {"provider": "B", "status": 0, "latency_ms": 2000, "throughput_tps": 80, "requests": 100},
+        {"provider": "C", "status": -5, "latency_ms": 30000, "throughput_tps": 5, "requests": 500},
+    ],
+    "acme/small-5": [{"provider": "A", "status": 0, "latency_ms": 300, "throughput_tps": 200, "requests": 50}],
+    "open/lite-2": [{"provider": "A", "status": 0, "latency_ms": 5000, "throughput_tps": 20, "requests": 50}],
+}}]
+
+
+class TestSpeed(unittest.TestCase):
+    def run_query(self, **q):
+        return recommend(MODELS, USAGE, LMARENA, None, {"top": 10, "min_quality": 0, **q},
+                         today="2026-09-17", perf_history=PERF)
+
+    def test_perf_weighted_by_requests_and_degraded_ignored(self):
+        from modelpicker.scoring import build_perf
+        big = build_perf(PERF)["by_model"]["acme/big-5"]
+        self.assertAlmostEqual(big["latency_ms"], (1000 * 300 + 2000 * 100) / 400)
+        self.assertAlmostEqual(big["throughput_tps"], (40 * 300 + 80 * 100) / 400)
+        self.assertEqual(big["fastest_provider"]["provider"], "B")
+
+    def test_fast_sort_and_formula(self):
+        res = self.run_query(sort="fast")
+        rows = {r["id"]: r for r in res["results"]}
+        small = rows["acme/small-5"]
+        self.assertEqual(small["speed"]["responsiveness"], 100.0)  # le plus rapide sur les deux axes
+        self.assertAlmostEqual(small["fast_score"], small["score"] * 1.5, delta=0.02)
+        self.assertEqual(res["results"][0]["id"], "acme/small-5")
+        self.assertIn("fast", res["formula"])
+
+    def test_speed_filters_exclude_unmeasured(self):
+        ids = lambda res: [r["id"] for r in res["results"]]  # noqa: E731
+        self.assertEqual(set(ids(self.run_query(max_latency_ms=1500))), {"acme/big-5", "acme/small-5"})
+        self.assertEqual(ids(self.run_query(min_throughput=100)), ["acme/small-5"])
+        no_perf = recommend(MODELS, USAGE, LMARENA, None, {"sort": "fast", "min_quality": 0}, today="2026-09-17")
+        self.assertEqual(no_perf["results"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -34,6 +34,9 @@ sortie de progression sur stderr) ; ensuite tout est lu dans le cache.
 | open source, poids ouverts, auto-hébergeable | `--open-weights` |
 | analyse des images | `--input image` (les PDF ne demandent rien : OpenRouter en extrait le texte) |
 | « fiable », « valeur sûre » | `--min-sources 2` |
+| rapide, réactif, faible latence, chat, temps réel, streaming | `--sort fast` |
+| « premier token en moins d'une seconde » | `--max-latency 1` (secondes) |
+| « au moins 100 tokens/s » | `--min-speed 100` |
 | « top 10 » | `--top 10` |
 
 Si la question est ambiguë sur la tâche, prends `general` et dis-le en une phrase : ne pose pas de

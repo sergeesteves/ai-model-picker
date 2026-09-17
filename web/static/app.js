@@ -50,6 +50,8 @@
     f.open_weights.checked = !!q.open_weights; f.tools.checked = !!q.tools;
     f.input.checked = (q.input_modalities || []).includes('image');
     f.min_sources.checked = q.min_sources >= 2;
+    f.max_latency_ms.value = [500, 1000, 2000, 5000].includes(q.max_latency_ms) ? String(q.max_latency_ms) : '';
+    f.min_throughput.value = [30, 50, 80].includes(q.min_throughput) ? String(q.min_throughput) : '';
   }
 
   function render(data) {
@@ -57,10 +59,18 @@
     fillForm(data.query);
     $('#summary').textContent = data.summary;
     $('#understood').innerHTML = '<span>Compris comme :</span>' + data.understood.map((u) => `<span class="chip">${esc(u)}</span>`).join('');
-    const maxScore = Math.max(...res.results.map((r) => r.score), 1);
+    const FAST = data.query.sort === 'fast';
+    const scoreOf = (r) => (FAST ? r.fast_score : r.score) || 0;
+    const maxScore = Math.max(...res.results.map(scoreOf), 1);
     $('#rows').innerHTML = res.results.length ? res.results.map((r) => {
       const detail = Object.entries(r.quality_detail).map(([s, v]) => `${SHORT[s] || s} ${dec(v.percentile, 0)}`).join(' · ');
       const u = r.usage ? `${tokens(r.usage.tokens_per_day)}<small>${r.usage.rank}ᵉ</small>` : '—';
+      const sp = r.speed || {};
+      const lat = sp.latency_ms != null ? `${dec(sp.latency_ms / 1000, 1)} s` : '—';
+      const fp = sp.fastest_provider;
+      const best = fp && fp.throughput_tps != null && sp.throughput_tps != null && fp.throughput_tps > sp.throughput_tps * 1.15
+        ? `<small title="Hébergeur le plus rapide">max ${dec(fp.throughput_tps, 0)} (${esc(fp.provider)})</small>` : '';
+      const tps = sp.throughput_tps != null ? `${dec(sp.throughput_tps, 0)} t/s${best}` : '—';
       return `<tr>
         <td>${r.position}</td>
         <td class="model"><strong>${esc(r.name)}${r.open_weights ? '<span class="ow" title="Poids ouverts">open</span>' : ''}</strong><small>${esc(r.author)}</small></td>
@@ -68,10 +78,12 @@
         <td class="num">${dec(r.blended_price_per_m)}</td>
         <td class="num">${dec(r.price_in_per_m)} / ${dec(r.price_out_per_m)}</td>
         <td class="num">${ctx(r.context_length)}</td>
+        <td class="num">${lat}</td>
+        <td class="num">${tps}</td>
         <td class="num">${u}</td>
-        <td class="num">${dec(r.score, 1)}<div class="bar"><span style="width:${(100 * r.score / maxScore).toFixed(1)}%"></span></div></td>
+        <td class="num">${dec(scoreOf(r), 1)}<div class="bar"><span style="width:${(100 * scoreOf(r) / maxScore).toFixed(1)}%"></span></div></td>
       </tr>`;
-    }).join('') : '<tr><td colspan="8">Aucun modèle ne passe ces filtres. Essayez d\'en relâcher un.</td></tr>';
+    }).join('') : '<tr><td colspan="10">Aucun modèle ne passe ces filtres. Essayez d\'en relâcher un.</td></tr>';
 
     const f = res.formula;
     const us = res.usage_source;
@@ -82,11 +94,13 @@
         <li>Q = ${esc(f.Q)}</li>
         <li>A = ${esc(f.A)}</li>
         <li>P = ${esc(f.P)}</li>
+        ${f.fast ? `<li>Tri rapide : ${esc(f.fast)}, avec R = ${esc(f.R)}</li>` : ''}
       </ul>
       <p style="margin-top:10px"><strong>Sources</strong> (${res.total_candidates} modèles classés après filtres)</p>
       <ul>${res.sources.map((s) => `<li>${esc(s.label)}, données du ${esc(s.date)}</li>`).join('')}
         <li>${esc(us.label)}, ${span}</li>
         <li>${esc(res.prices_source.label)}, prix du ${esc(res.prices_source.date)}</li>
+        ${res.speed_source && res.speed_source.days ? `<li>${esc(res.speed_source.label)}, ${res.speed_source.days > 1 ? `moyenne du ${esc(res.speed_source.first_date)} au ${esc(res.speed_source.date)}` : `mesure du ${esc(res.speed_source.date)}`}</li>` : ''}
       </ul>`;
     const un = res.unscored_popular || [];
     $('#unscored').hidden = !un.length;

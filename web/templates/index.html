@@ -14,7 +14,7 @@
   <section class="hero">
     <p class="kicker">Outil gratuit · données mises à jour chaque jour</p>
     <h1>Quel modèle IA choisir ?</h1>
-    <p class="lead">Les benchmarks vous disent quel modèle est bon. Les grilles tarifaires, lequel est cher. Aucun ne vous dit ce que les développeurs <strong>utilisent vraiment</strong>. Ce comparateur croise les trois : la qualité mesurée par Artificial Analysis, LMArena et Epoch AI, le prix affiché sur OpenRouter, et les tokens réellement traités chaque jour sur OpenRouter.</p>
+    <p class="lead">Les benchmarks vous disent quel modèle est bon. Les grilles tarifaires, lequel est cher. Aucun ne vous dit ce que les développeurs <strong>utilisent vraiment</strong>. Ce comparateur croise les trois : la qualité mesurée par Artificial Analysis, LMArena et Epoch AI, le prix affiché sur OpenRouter, et les tokens réellement traités chaque jour sur OpenRouter. Avec, en prime, la latence et la vitesse mesurées sur le trafic réel.</p>
     <p class="note"><strong>Pas de boîte noire</strong> : le classement sort d'une formule affichée sous le tableau. Quand vous posez une question, un petit modèle de langage la traduit en filtres, et c'est tout. Il ne choisit rien à votre place.</p>
   </section>
 
@@ -30,6 +30,7 @@
       <button type="button" class="quiet example" data-question="Meilleur rapport qualité/prix pour du code" data-query='{"task":"code","sort":"value"}'>Code, meilleur rapport qualité/prix</button>
       <button type="button" class="quiet example" data-question="Le meilleur rapport qualité/prix chez OpenAI" data-query='{"task":"general","sort":"value","authors":"openai"}'>Le meilleur chez OpenAI pour son prix</button>
       <button type="button" class="quiet example" data-question="Le moins cher avec un million de tokens de contexte et un niveau agentique correct" data-query='{"task":"agentic","sort":"price","min_context":1000000,"min_quality":50}'>Le moins cher avec 1M de contexte, agents</button>
+      <button type="button" class="quiet example" data-question="Un modèle rapide et bon pour un chatbot" data-query='{"task":"general","sort":"fast"}'>Rapide et bon pour un chatbot</button>
       <button type="button" class="quiet example" data-question="Un modèle open source fiable qui lit les images" data-query='{"task":"general","sort":"value","open_weights":true,"min_sources":2,"input_modalities":"image"}'>Open source, fiable, lit les images</button>
     </div>
   </section>
@@ -48,7 +49,7 @@
           <select name="task"><option value="general">Usage général</option><option value="code">Code</option><option value="agentic">Agents / outils</option></select>
         </label>
         <label>Classer par
-          <select name="sort"><option value="value">Rapport qualité/prix</option><option value="quality">Qualité</option><option value="price">Prix le plus bas</option><option value="usage">Usage réel</option></select>
+          <select name="sort"><option value="value">Rapport qualité/prix</option><option value="quality">Qualité</option><option value="price">Prix le plus bas</option><option value="usage">Usage réel</option><option value="fast">Rapide + qualité/prix</option></select>
         </label>
         <label>Éditeur
           <select name="author"><option value="">Tous</option>{% for a in authors %}<option value="{{ a }}">{{ a }}</option>{% endfor %}</select>
@@ -58,6 +59,12 @@
         </label>
         <label>Prix mixte maximum ($/M)
           <input type="number" name="max_price" min="0" step="0.01" placeholder="Indifférent">
+        </label>
+        <label>Latence maximum
+          <select name="max_latency_ms"><option value="">Indifférente</option><option value="500">0,5 s</option><option value="1000">1 s</option><option value="2000">2 s</option><option value="5000">5 s</option></select>
+        </label>
+        <label>Vitesse minimum
+          <select name="min_throughput"><option value="">Indifférente</option><option value="30">30 tokens/s</option><option value="50">50 tokens/s</option><option value="80">80 tokens/s</option></select>
         </label>
         <label>Qualité minimum
           <select name="min_quality"><option value="">Par défaut</option><option value="50">50 / 100</option><option value="60">60 / 100</option><option value="70">70 / 100</option><option value="80">80 / 100</option></select>
@@ -78,7 +85,7 @@
     <div class="understood" id="understood"></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Modèle</th><th>Qualité /100</th><th class="num">Prix mixte $/M</th><th class="num">Entrée / sortie</th><th class="num">Contexte</th><th class="num">Usage / jour</th><th class="num">Score</th></tr></thead>
+        <thead><tr><th>#</th><th>Modèle</th><th>Qualité /100</th><th class="num">Prix mixte $/M</th><th class="num">Entrée / sortie</th><th class="num">Contexte</th><th class="num">Latence</th><th class="num">Vitesse</th><th class="num">Usage / jour</th><th class="num">Score</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -93,6 +100,8 @@
     <p>Le prix est pris en racine carrée : un modèle deux fois plus cher doit être environ 41 % meilleur pour garder le même score. C'est un choix, et il est affiché sous chaque tableau.</p>
     <h2>Pourquoi un percentile plutôt que la note brute ?</h2>
     <p>Parce que les classements ne parlent pas la même langue : un indice sur 100 chez Artificial Analysis, un Elo chez LMArena, un indice de capacités chez Epoch AI. Le percentile les ramène tous à la même question : combien de modèles font moins bien ? Revers de la médaille, <strong>c'est un rang, pas un écart</strong> : deux modèles très proches peuvent être séparés de quelques points.</p>
+    <h2>D'où viennent la latence et la vitesse ?</h2>
+    <p>Des statistiques de performance d'OpenRouter, mesurées sur les vraies requêtes : la <strong>latence</strong>, c'est le délai médian avant le premier token, et la <strong>vitesse</strong>, le nombre médian de tokens produits par seconde. Un même modèle est servi par plusieurs hébergeurs, plus ou moins rapides : j'en fais la moyenne pondérée par leur nombre de requêtes, ce qu'obtient un appel « typique ». Le tableau indique aussi l'hébergeur le plus rapide : sur OpenRouter, vous pouvez le choisir explicitement. Pour un chat ou tout usage en temps réel, le tri « Rapide + qualité/prix » multiplie le score habituel par un facteur de 0,5 à 1,5 selon la réactivité du modèle. Attention, pour un modèle qui réfléchit avant de répondre, la latence inclut souvent sa réflexion.</p>
     <h2>Pourquoi tenir compte de l'usage ?</h2>
     <p>Un bon score ne dit pas si un modèle tient la route au quotidien. Des milliards de tokens traités chaque jour, ça ne prouve pas la qualité à soi seul, mais c'est un signal terrain. D'où un bonus plafonné à 25 % : l'adoption départage, elle ne fait pas gagner un modèle médiocre.</p>
     <h2>Quelles sont les limites ?</h2>

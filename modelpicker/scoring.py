@@ -47,10 +47,14 @@ DEFAULTS = {
     "price_weight": 0.5,       # β
     "adoption_weight": 0.25,   # α
     "include_free": False,
+    "max_latency_ms": None,    # latence médiane avant le premier token, en ms
+    "min_throughput": None,    # débit médian minimum, en tokens/s
 }
 PRICE_FLOOR = 0.05  # $/M : évite qu'un prix quasi nul fasse exploser le score
 PRIOR = 50.0        # a priori neutre, compte pour une source : un modèle noté par une seule source est tiré vers la médiane
-VALUE_MIN_QUALITY = 60.0
+VALUE_MIN_QUALITY = 60.0   # tris value et fast
+SORTS = ("value", "quality", "price", "usage", "fast")
+PERF_MIN_REQUESTS = 10     # en dessous, un hébergeur n'a pas assez de requêtes pour une médiane fiable
 
 
 def load_tasks() -> dict:
@@ -138,21 +142,74 @@ def build_usage(index: ModelIndex, history: list[dict]) -> dict:
             "by_model": by_model, "unresolved": sorted(unresolved, key=lambda x: x[1])}
 
 
+# ---------------------------------------------------------------- vitesse et latence (OpenRouter)
+def _weighted(endpoints: list[dict], field: str) -> float | None:
+    pts = [(e[field], e["requests"]) for e in endpoints if e.get(field) is not None and e["requests"] > 0]
+    total = sum(w for _, w in pts)
+    return sum(v * w for v, w in pts) / total if total else None
+
+
+def build_perf(history: list[dict]) -> dict:
+    """Par modèle : latence et débit médians, moyennés par requêtes sur les hébergeurs, puis sur les jours.
+
+    Un hébergeur compte s'il est en service (status 0) avec au moins PERF_MIN_REQUESTS requêtes sur la fenêtre ;
+    à défaut, tous ceux qui ont servi des requêtes. R = réactivité 0-100 = moyenne des percentiles de débit
+    (plus haut = mieux) et de latence (plus bas = mieux) parmi les modèles mesurés.
+    """
+    if not history:
+        return {"date": None, "days": 0, "by_model": {}}
+    daily: dict[str, list[tuple]] = {}
+    for snap in history:
+        for mid, endpoints in snap["data"].items():
+            usable = [e for e in endpoints if e.get("status") == 0 and e["requests"] >= PERF_MIN_REQUESTS] \
+                or [e for e in endpoints if e["requests"] > 0]
+            if not usable:
+                continue
+            lat, tps = _weighted(usable, "latency_ms"), _weighted(usable, "throughput_tps")
+            best = max((e for e in usable if e.get("throughput_tps") is not None),
+                       key=lambda e: e["throughput_tps"], default=None)
+            daily.setdefault(mid, []).append((lat, tps, sum(e["requests"] for e in usable), best))
+    by_model = {}
+    for mid, days in daily.items():
+        lats = [d[0] for d in days if d[0] is not None]
+        tpss = [d[1] for d in days if d[1] is not None]
+        best = days[0][3]  # instantané le plus récent
+        by_model[mid] = {
+            "latency_ms": sum(lats) / len(lats) if lats else None,
+            "throughput_tps": sum(tpss) / len(tpss) if tpss else None,
+            "requests": sum(d[2] for d in days), "days": len(days),
+            "fastest_provider": None if not best else {"provider": best["provider"], "throughput_tps": best["throughput_tps"],
+                                                       "latency_ms": best["latency_ms"]},
+        }
+    lat_ids = [k for k, v in by_model.items() if v["latency_ms"] is not None]
+    tps_ids = [k for k, v in by_model.items() if v["throughput_tps"] is not None]
+    lat_pct = dict(zip(lat_ids, percentiles([-by_model[k]["latency_ms"] for k in lat_ids]))) if lat_ids else {}
+    tps_pct = dict(zip(tps_ids, percentiles([by_model[k]["throughput_tps"] for k in tps_ids]))) if tps_ids else {}
+    for k, v in by_model.items():
+        parts = [x for x in (lat_pct.get(k), tps_pct.get(k)) if x is not None]
+        v["responsiveness"] = sum(parts) / len(parts) if parts else None
+    dates = sorted(snap["source_date"] for snap in history)
+    return {"date": dates[-1], "first_date": dates[0], "days": len(history),
+            "measured_at": history[0].get("measured_at"), "by_model": by_model}
+
+
 # ---------------------------------------------------------------- recommandation
 def author_of(model_id: str) -> str:
     return model_id.split("/", 1)[0]
 
 
 def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict | None,
-              epoch_snap: dict | None, query: dict | None = None, today: str | None = None) -> dict:
+              epoch_snap: dict | None, query: dict | None = None, today: str | None = None,
+              perf_history: list[dict] | None = None) -> dict:
     q = {**DEFAULTS, **{k: v for k, v in (query or {}).items() if v is not None}}
     tasks = load_tasks()
     if q["task"] not in tasks:
         raise ValueError(f"tâche inconnue « {q['task']} » (choix : {', '.join(tasks)})")
     task = tasks[q["task"]]
-    if q["sort"] not in ("value", "quality", "price", "usage"):
-        raise ValueError("sort doit valoir value, quality, price ou usage")
-    min_quality = q["min_quality"] if q["min_quality"] is not None else (VALUE_MIN_QUALITY if q["sort"] == "value" else 0.0)
+    if q["sort"] not in SORTS:
+        raise ValueError("sort doit valoir " + ", ".join(SORTS))
+    min_quality = q["min_quality"] if q["min_quality"] is not None else (
+        VALUE_MIN_QUALITY if q["sort"] in ("value", "fast") else 0.0)
     share_in = q["input_share"] if q["input_share"] is not None else task["input_share"]
     alpha, beta = q["adoption_weight"], q["price_weight"]
     authors = {a.lower() for a in q["authors"]}
@@ -161,6 +218,8 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
     index = ModelIndex(models_snap["data"])
     signals = build_signals(index, lmarena_snap, epoch_snap, models_snap.get("source_date"))
     usage = build_usage(index, usage_history)
+    perf = build_perf(perf_history or [])
+    needs_perf = q["sort"] == "fast" or q["max_latency_ms"] is not None or q["min_throughput"] is not None
     task_sources = [s for s in task["sources"] if s in signals]
 
     results, unscored_popular = [], []
@@ -189,6 +248,14 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
         if q["max_price"] is not None and blended > q["max_price"]:
             continue
 
+        sp = perf["by_model"].get(mid)
+        if needs_perf and not (sp and sp["responsiveness"] is not None):
+            continue  # vitesse demandée mais non mesurée : on n'invente rien
+        if q["max_latency_ms"] is not None and (sp["latency_ms"] is None or sp["latency_ms"] > q["max_latency_ms"]):
+            continue
+        if q["min_throughput"] is not None and (sp["throughput_tps"] is None or sp["throughput_tps"] < q["min_throughput"]):
+            continue
+
         found = {s: signals[s]["scores"][mid] for s in task_sources if mid in signals[s]["scores"]}
         u = usage["by_model"].get(mid)
         if not found:
@@ -200,6 +267,7 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
             continue
         adoption = u["pct"] if u else 0.0
         score = quality * (1 + alpha * adoption / 100) / max(blended, PRICE_FLOOR) ** beta
+        fast_score = score * (0.5 + sp["responsiveness"] / 100) if sp and sp["responsiveness"] is not None else None
         results.append({
             "id": mid, "name": _display_name(m), "author": author_of(mid),
             "quality": round(quality, 1), "n_sources": len(found), "n_sources_possible": len(task_sources),
@@ -215,6 +283,12 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
                 "observed_input_share": round(u["observed_input_share"], 3)},
             "adoption": round(adoption, 1),
             "score": round(score, 2),
+            "speed": None if not sp else {
+                "latency_ms": None if sp["latency_ms"] is None else round(sp["latency_ms"]),
+                "throughput_tps": None if sp["throughput_tps"] is None else round(sp["throughput_tps"], 1),
+                "responsiveness": None if sp["responsiveness"] is None else round(sp["responsiveness"], 1),
+                "requests": sp["requests"], "days": sp["days"], "fastest_provider": sp["fastest_provider"]},
+            "fast_score": None if fast_score is None else round(fast_score, 2),
         })
 
     sort_keys = {
@@ -222,6 +296,7 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
         "quality": lambda r: (-r["quality"], r["blended_price_per_m"]),
         "price": lambda r: (r["blended_price_per_m"], -r["quality"]),
         "usage": lambda r: (-(r["usage"] or {}).get("tokens_per_day", 0), -r["quality"]),
+        "fast": lambda r: (-(r["fast_score"] or 0), r["blended_price_per_m"]),
     }
     results.sort(key=sort_keys[q["sort"]])
     for i, r in enumerate(results):
@@ -237,17 +312,24 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
             "A": "percentile d'usage OpenRouter (tokens/jour), 0 si absent du classement",
             "P": f"prix mixte $/M tokens = {round(share_in * 100)} % × entrée + {round((1 - share_in) * 100)} % × sortie",
             "alpha": alpha, "beta": beta,
+            **({"fast": "score × (0,5 + R / 100)",
+                "R": "réactivité 0-100 = moyenne des percentiles de débit (tokens/s, plus haut = mieux) et de latence avant le premier token (plus bas = mieux), parmi les modèles mesurés"}
+               if q["sort"] == "fast" else {}),
         },
         "sources": [{"id": s, "label": SOURCE_LABELS[s], "date": signals[s]["date"],
                      "entries": signals[s]["entries"], "matched": signals[s]["matched"]} for s in task_sources],
         "usage_source": {"label": "OpenRouter · Rankings (tokens traités, tous hébergeurs)",
                          "date": usage["date"], "first_date": usage.get("first_date"), "days": usage["days"]},
         "prices_source": {"label": "OpenRouter · /api/v1/models", "date": models_snap.get("source_date")},
+        "speed_source": {"label": "OpenRouter · performances par hébergeur (médianes sur 30 min, pondérées par requêtes)",
+                         "date": perf["date"], "first_date": perf.get("first_date"), "days": perf["days"],
+                         "measured_at": perf.get("measured_at")},
         "total_candidates": len(results),
         "results": results[: q["top"]],
         "unscored_popular": sorted(unscored_popular, key=lambda x: x["usage_rank"])[:5],
         "caveats": [
             "Usage = trafic développeurs via l'API OpenRouter, pas le grand public ; OpenAI, Anthropic et Google y sont sous-représentés par rapport à leurs canaux directs, et les modèles économiques dominent mécaniquement le volume.",
+            "Vitesse = médianes mesurées par OpenRouter sur 30 minutes au moment de la collecte, pondérées par les requêtes de chaque hébergeur : elle varie selon l'heure, l'hébergeur choisi et la longueur des réponses. La latence d'un modèle qui réfléchit inclut souvent sa réflexion.",
             "Qualité en percentiles : un rang, pas un écart. LMArena retient le meilleur niveau d'effort publié (ex. « max »), plus coûteux en tokens de réflexion que le prix affiché ne le laisse penser.",
         ],
     }
