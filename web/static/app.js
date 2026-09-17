@@ -9,7 +9,8 @@
   const SHORT = { aa_intelligence: 'AA', aa_coding: 'AA', aa_agentic: 'AA', lmarena_text: 'LMArena', lmarena_coding: 'LMArena code', lmarena_webdev: 'LMArena WebDev', lmarena_agent: 'LMArena agent', epoch_eci: 'Epoch' };
 
   if (EMBED && window.parent !== window) {
-    const send = () => window.parent.postMessage({ type: 'amp-height', height: Math.ceil(document.body.getBoundingClientRect().height) }, '*');
+    // Contrat du shortcode creapulse_tool (autoheight) : type 'vsg-height'
+    const send = () => window.parent.postMessage({ type: 'vsg-height', height: Math.ceil(document.body.getBoundingClientRect().height) }, '*');
     new ResizeObserver(send).observe(document.body);
   }
 
