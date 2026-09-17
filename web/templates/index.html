@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr" class="{% if embed %}embed{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quel modèle IA choisir ? Comparateur qualité, prix et usage réel — Creapulse</title>
+  <meta name="description" content="Comparateur gratuit des modèles de langage : qualité (Artificial Analysis, LMArena, Epoch AI), prix et usage réel sur OpenRouter, mis à jour chaque jour. Formule de classement affichée.">
+  <link rel="stylesheet" href="{{ root }}/static/style.css?v={{ static_version }}">
+</head>
+<body class="{% if embed %}embed{% endif %}" data-root="{{ root }}" data-embed="{{ '1' if embed else '0' }}">
+<header class="top"><a class="brand" href="https://www.creapulse.fr/">creapulse.fr</a></header>
+
+<main>
+  <section class="hero">
+    <p class="kicker">Outil gratuit · données mises à jour chaque jour</p>
+    <h1>Quel modèle IA choisir ?</h1>
+    <p class="lead">Les benchmarks vous disent quel modèle est bon. Les grilles tarifaires, lequel est cher. Aucun ne vous dit ce que les développeurs <strong>utilisent vraiment</strong>. Ce comparateur croise les trois : la qualité mesurée par Artificial Analysis, LMArena et Epoch AI, le prix affiché sur OpenRouter, et les tokens réellement traités chaque jour sur OpenRouter.</p>
+    <p class="note"><strong>Pas de boîte noire</strong> : le classement sort d'une formule affichée sous le tableau. Quand vous posez une question, un petit modèle de langage la traduit en filtres, et c'est tout. Il ne choisit rien à votre place.</p>
+  </section>
+
+  {% if llm_enabled %}
+  <section class="card" id="ask-card">
+    <h2>Posez votre question</h2>
+    <form id="ask-form" class="ask-row">
+      <input type="text" id="question" maxlength="{{ question_max }}" placeholder="Ex. : le meilleur rapport qualité/prix pour coder en Python" aria-label="Votre question">
+      <button type="submit" class="cta" id="ask-btn">Trouver le modèle</button>
+    </form>
+    <div class="examples">
+      <span class="hint">Ou partez d'un exemple :</span>
+      <button type="button" class="quiet example" data-question="Meilleur rapport qualité/prix pour du code" data-query='{"task":"code","sort":"value"}'>Code, meilleur rapport qualité/prix</button>
+      <button type="button" class="quiet example" data-question="Le meilleur rapport qualité/prix chez OpenAI" data-query='{"task":"general","sort":"value","authors":"openai"}'>Le meilleur chez OpenAI pour son prix</button>
+      <button type="button" class="quiet example" data-question="Le moins cher avec un million de tokens de contexte et un niveau agentique correct" data-query='{"task":"agentic","sort":"price","min_context":1000000,"min_quality":60}'>Le moins cher avec 1M de contexte, agents</button>
+      <button type="button" class="quiet example" data-question="Un modèle open source fiable qui lit les images" data-query='{"task":"general","sort":"value","open_weights":true,"min_sources":2,"input_modalities":"image"}'>Open source, fiable, lit les images</button>
+    </div>
+  </section>
+  {% endif %}
+
+  <div id="feedback" aria-live="polite">
+    <div class="status" id="status" hidden><span class="spinner"></span><span id="status-text">Calcul en cours…</span></div>
+    <div class="flash" id="error" role="alert" hidden></div>
+  </div>
+
+  <section class="card">
+    <h2>{% if llm_enabled %}Ou réglez les filtres vous-même{% else %}Réglez les filtres{% endif %}</h2>
+    <form id="filters">
+      <div class="filters">
+        <label>Pour quoi faire ?
+          <select name="task"><option value="general">Usage général</option><option value="code">Code</option><option value="agentic">Agents / outils</option></select>
+        </label>
+        <label>Classer par
+          <select name="sort"><option value="value">Rapport qualité/prix</option><option value="quality">Qualité</option><option value="price">Prix le plus bas</option><option value="usage">Usage réel</option></select>
+        </label>
+        <label>Éditeur
+          <select name="author"><option value="">Tous</option>{% for a in authors %}<option value="{{ a }}">{{ a }}</option>{% endfor %}</select>
+        </label>
+        <label>Contexte minimum
+          <select name="min_context"><option value="">Indifférent</option><option value="128000">128 k tokens</option><option value="200000">200 k tokens</option><option value="400000">400 k tokens</option><option value="1000000">1 million de tokens</option></select>
+        </label>
+        <label>Prix mixte maximum ($/M)
+          <input type="number" name="max_price" min="0" step="0.01" placeholder="Indifférent">
+        </label>
+        <label>Qualité minimum
+          <select name="min_quality"><option value="">Par défaut</option><option value="50">50 / 100</option><option value="60">60 / 100</option><option value="70">70 / 100</option><option value="80">80 / 100</option></select>
+        </label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" name="open_weights" value="1"> Poids ouverts</label>
+        <label><input type="checkbox" name="tools" value="1"> Appel d'outils</label>
+        <label><input type="checkbox" name="input" value="image"> Lit les images</label>
+        <label><input type="checkbox" name="min_sources" value="2"> Confirmé par 2 sources au moins</label>
+      </div>
+      <div class="actions"><button type="submit" class="secondary" id="filters-btn">Classer les modèles</button></div>
+    </form>
+  </section>
+
+  <section class="card" id="result" hidden aria-live="polite">
+    <p class="summary" id="summary"></p>
+    <div class="understood" id="understood"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Modèle</th><th>Qualité /100</th><th class="num">Prix mixte $/M</th><th class="num">Entrée / sortie</th><th class="num">Contexte</th><th class="num">Usage / jour</th><th class="num">Score</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="box" id="formula"></div>
+    <p class="caveats" id="unscored" hidden></p>
+    <div class="caveats" id="caveats"></div>
+  </section>
+
+  <section class="faq">
+    <h2>Comment le score est-il calculé ?</h2>
+    <p>En gros : <strong>la qualité rapportée au prix</strong>, avec un petit bonus pour les modèles réellement adoptés. La qualité, c'est la position du modèle dans chaque classement (Artificial Analysis, LMArena, Epoch AI), convertie en percentile puis moyennée. Un modèle noté par une seule source est tiré vers la moyenne : il ne peut pas dépasser 75. Le prix est un prix mixte entrée/sortie, pondéré selon la tâche : un agent de code lit beaucoup plus de tokens qu'il n'en écrit, donc le prix d'entrée pèse 90 % pour le code et 95 % pour les agents.</p>
+    <p>Le prix est pris en racine carrée : un modèle deux fois plus cher doit être environ 41 % meilleur pour garder le même score. C'est un choix, et il est affiché sous chaque tableau.</p>
+    <h2>Pourquoi un percentile plutôt que la note brute ?</h2>
+    <p>Parce que les classements ne parlent pas la même langue : un indice sur 100 chez Artificial Analysis, un Elo chez LMArena, un indice de capacités chez Epoch AI. Le percentile les ramène tous à la même question : combien de modèles font moins bien ? Revers de la médaille, <strong>c'est un rang, pas un écart</strong> : deux modèles très proches peuvent être séparés de quelques points.</p>
+    <h2>Pourquoi tenir compte de l'usage ?</h2>
+    <p>Un bon score ne dit pas si un modèle tient la route au quotidien. Des milliards de tokens traités chaque jour, ça ne prouve pas la qualité à soi seul, mais c'est un signal terrain. D'où un bonus plafonné à 25 % : l'adoption départage, elle ne fait pas gagner un modèle médiocre.</p>
+    <h2>Quelles sont les limites ?</h2>
+    <p>L'usage mesuré est celui des <strong>développeurs qui passent par OpenRouter</strong>, pas du grand public. OpenAI, Anthropic et Google y sont sous-représentés par rapport à leurs propres API, et les modèles économiques dominent mécaniquement le volume. Les modèles tout juste sortis ne sont pas encore évalués : ils sont signalés à part, pas classés. Et LMArena note souvent la version « max » d'un modèle, qui consomme plus de tokens de réflexion que le prix au token ne le laisse penser.</p>
+    <h2>Que devient ma question ?</h2>
+    <p>Elle est envoyée à un modèle de langage pour être traduite en filtres, sans aucune donnée personnelle associée. La correspondance question → filtres est gardée en mémoire, pour qu'une question déjà posée ne relance pas un appel. Rien n'est enregistré sur disque.</p>
+  </section>
+</main>
+
+<footer>Données : OpenRouter · Artificial Analysis (via OpenRouter) · LMArena · Epoch AI (CC-BY). Outil conçu par Serge Esteves, <a href="https://www.creapulse.fr/">Creapulse</a>.</footer>
+
+<script src="{{ root }}/static/app.js?v={{ static_version }}"></script>
+</body>
+</html>

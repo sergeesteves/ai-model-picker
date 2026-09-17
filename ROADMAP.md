@@ -18,7 +18,7 @@
 - [ ] SWE-bench / Terminal-Bench (Epoch) comme sources `code` et `agentic` supplémentaires.
 - [ ] Intégration continue : tests unitaires sur chaque push.
 
-## v2 : outil web sous `www.creapulse.fr/outils/…`
+## v2 : outil web sous `www.creapulse.fr/outils/quel-modele-ia` (code fait le 2026-09-17, déploiement à faire)
 
 Décision (2026-09-17) : **page vitrine d'expertise, gratuite, non monétisée**.
 

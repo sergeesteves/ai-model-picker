@@ -62,6 +62,26 @@ Exemple de sortie (17/09/2026, `--task code`, extrait) :
 `skills/quel-modele-ia/SKILL.md` traduit une question en langage naturel en options de la commande, puis
 restitue le tableau sans le retoucher. Installation : copier (ou lier) le dossier dans `~/.claude/skills/`.
 
+## Page web (`web/`)
+
+Micro-app FastAPI servie sous `https://www.creapulse.fr/outils/quel-modele-ia` : formulaire de filtres
+(déterministe, gratuit) + question libre traduite en filtres par **un seul** appel à un petit LLM
+(OmniRoute), sortie validée par liste blanche (`modelpicker/query.py`). Les exemples de la page sont des
+requêtes prédéfinies, sans appel LLM. La collecte quotidienne tourne en tâche de fond (téléchargements
+seulement) et écrit dans un volume persistant.
+
+Garde-fous de coût : plafond global et par IP de questions libres par jour, cache des questions déjà
+posées, et budget quotidien plafonné sur la clé OmniRoute. Plafond atteint → la question libre se coupe
+pour la journée, les filtres restent disponibles.
+
+```bash
+uv venv .venv && uv pip install -p .venv/Scripts/python.exe -r requirements-web.txt pytest
+.venv/Scripts/python.exe -m pytest -q
+LLM_API_KEY=... .venv/Scripts/python.exe -m uvicorn web.main:app --port 8010
+```
+
+Déploiement : `Dockerfile` (port 8000, healthcheck `/health`, volume `/data`), variables dans `.env.example`.
+
 ## Architecture
 
 ```
@@ -71,6 +91,8 @@ modelpicker/
   scoring.py   calcul pur : instantanés + requête -> dict JSON
   render.py    rendu Markdown
   cli.py       collect | recommend | coverage
+  query.py     liste blanche des requêtes externes (web, LLM, MCP) + phrase de synthèse par gabarit
+web/           page web (FastAPI) : formulaire, question libre plafonnée, collecte en tâche de fond
 data/          tasks.json (profils de tâche), aliases.json (rapprochements manuels)
 ```
 
