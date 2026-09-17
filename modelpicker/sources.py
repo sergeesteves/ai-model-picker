@@ -6,6 +6,7 @@ la commande recommend retombe alors sur le dernier instantané disponible.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import csv
 import datetime as dt
 import io
@@ -21,6 +22,13 @@ from pathlib import Path
 
 USER_AGENT = "ai-model-picker/0.1"
 log = logging.getLogger("modelpicker.sources")
+
+
+def _int_env(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name) or default)
+    except ValueError:
+        return default
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 # Endpoint non documenté (celui de la page Rankings) : seule la dernière date est complète.
@@ -43,6 +51,8 @@ LMARENA_BOARDS = {
     "lmarena_agent": ("agent", "overall"),
 }
 EPOCH_ZIP_URL = "https://epoch.ai/data/benchmark_data.zip"
+# Au-delà, on considère la voie parquet comme indisponible (pyarrow absent, lent à charger, réseau bloqué).
+HF_PARQUET_DEADLINE_S = _int_env("HF_PARQUET_DEADLINE_S", 45)
 
 SOURCES = ("openrouter_models", "openrouter_usage", "openrouter_perf", "lmarena", "epoch")
 
@@ -216,6 +226,7 @@ def _hf_parquet_rows(config: str) -> list[dict]:
 def _hf_api_rows(config: str) -> list[dict]:
     """Repli sans dépendance : API /rows du dataset viewer, pages de 100, rythme lent (429 sinon)."""
     out, offset, failures = [], 0, 0
+    log.info("lmarena : lecture de %s par l'API /rows", config)
     while True:
         qs = urllib.parse.urlencode({"dataset": LMARENA_DATASET, "config": config, "split": "latest",
                                      "offset": offset, "length": 100})
@@ -231,14 +242,23 @@ def _hf_api_rows(config: str) -> list[dict]:
         out.extend(rows)
         offset += len(rows)
         if not rows or offset >= page.get("num_rows_total", 0):
+            log.info("lmarena : %s = %d lignes via l'API /rows", config, len(out))
             return out
-        time.sleep(1.0)
+        time.sleep(0.6)
 
 
 def _hf_rows(config: str) -> list[dict]:
-    """Parquet si possible ; sinon l'API du dataset viewer, plus lente mais sans dépendance."""
+    """Parquet si possible ; sinon l'API du dataset viewer, plus lente mais sans dépendance.
+
+    La voie parquet est bornée dans le temps : en prod, l'import de pyarrow s'est déjà bloqué sans jamais
+    rendre la main (aucune trace, collecte figée). Passé le délai, on bascule sur l'API plutôt que d'attendre.
+    """
     try:
-        return _hf_parquet_rows(config)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(_hf_parquet_rows, config).result(timeout=HF_PARQUET_DEADLINE_S)
+    except concurrent.futures.TimeoutError:
+        log.warning("lmarena : voie parquet trop lente pour %s (> %d s), repli sur l'API /rows",
+                    config, HF_PARQUET_DEADLINE_S)
     except ImportError:
         log.info("lmarena : pyarrow absent, repli sur l'API /rows pour %s", config)
     except Exception as exc:  # réseau, 5xx, parquet illisible : le repli reste possible
