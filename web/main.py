@@ -26,6 +26,8 @@ from .limits import DailyBudget, QuestionCache, RateLimiter
 log = logging.getLogger("model-picker")
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# Le healthcheck Coolify interroge /health toutes les 5 s : sans ce filtre, il noie les traces de collecte.
+logging.getLogger("uvicorn.access").addFilter(lambda r: "/health" not in r.getMessage())
 
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = (BASE_DIR / "static").resolve()
