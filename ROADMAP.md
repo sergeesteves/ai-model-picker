@@ -16,9 +16,14 @@
       benchmarks, et couverture des nouveautés absentes du relais OpenRouter. Clé en variable d'environnement,
       jamais dans le repo.
 - [ ] SWE-bench / Terminal-Bench (Epoch) comme sources `code` et `agentic` supplémentaires.
+- [ ] **Vitesse / latence** (demande 2026-09-17, pour le chat et les usages temps réel) : profil « rapide »
+      prix × latence × qualité. Constat : l'API publique OpenRouter `/models/{id}/endpoints` renvoie
+      `latency_last_30m` / `throughput_last_30m` à `null` sans authentification (seul `uptime` est rempli).
+      Piste principale : API Artificial Analysis (clé gratuite) = vitesse de sortie (tokens/s) et délai avant
+      le premier token par modèle. À vérifier : conditions d'usage, et si l'endpoint OpenRouter authentifié remplit la latence.
 - [ ] Intégration continue : tests unitaires sur chaque push.
 
-## v2 : outil web sous `www.creapulse.fr/outils/quel-modele-ia` (code fait le 2026-09-17, déploiement à faire)
+## v2 : outil web sous `www.creapulse.fr/outils/quel-modele-ia` (en ligne le 2026-09-17)
 
 Décision (2026-09-17) : **page vitrine d'expertise, gratuite, non monétisée**.
 
