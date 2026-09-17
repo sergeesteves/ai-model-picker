@@ -10,6 +10,7 @@ import csv
 import datetime as dt
 import io
 import json
+import logging
 import os
 import time
 import urllib.parse
@@ -18,6 +19,7 @@ import zipfile
 from pathlib import Path
 
 USER_AGENT = "ai-model-picker/0.1"
+log = logging.getLogger("modelpicker.sources")
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 # Endpoint non documenté (celui de la page Rankings) : seule la dernière date est complète.
@@ -176,13 +178,16 @@ def _hf_parquet_rows(config: str) -> list[dict]:
     """Voie rapide : fichiers parquet du split `latest` (1 requête par fichier), si pyarrow est installé."""
     import pyarrow.parquet as pq  # dépendance optionnelle
 
-    tree = _get_json(f"{HF_TREE_URL}/{config}")
+    tree = json.loads(_http_get(f"{HF_TREE_URL}/{config}", timeout=30, retries=2).decode("utf-8"))
     files = sorted(f["path"] for f in tree if f.get("path", "").startswith(f"{config}/latest-") and f["path"].endswith(".parquet"))
     if not files:
         raise RuntimeError(f"LMArena : aucun fichier parquet latest pour {config}")
     rows = []
     for path in files:
-        rows.extend(pq.read_table(io.BytesIO(_http_get(f"{HF_RESOLVE_URL}/{path}"))).to_pylist())
+        started = time.monotonic()
+        blob = _http_get(f"{HF_RESOLVE_URL}/{path}", timeout=45, retries=2)
+        rows.extend(pq.read_table(io.BytesIO(blob)).to_pylist())
+        log.info("lmarena : %s lu en parquet (%d Ko, %.1f s)", path, len(blob) // 1024, time.monotonic() - started)
     return rows
 
 
@@ -209,10 +214,14 @@ def _hf_api_rows(config: str) -> list[dict]:
 
 
 def _hf_rows(config: str) -> list[dict]:
+    """Parquet si possible ; sinon l'API du dataset viewer, plus lente mais sans dépendance."""
     try:
         return _hf_parquet_rows(config)
     except ImportError:
-        return _hf_api_rows(config)
+        log.info("lmarena : pyarrow absent, repli sur l'API /rows pour %s", config)
+    except Exception as exc:  # réseau, 5xx, parquet illisible : le repli reste possible
+        log.warning("lmarena : parquet indisponible pour %s (%s), repli sur l'API /rows", config, exc)
+    return _hf_api_rows(config)
 
 
 def _arena_score(r: dict):
@@ -221,7 +230,11 @@ def _arena_score(r: dict):
 
 
 def fetch_lmarena() -> dict:
-    by_config = {config: _hf_rows(config) for config in {c for c, _ in LMARENA_BOARDS.values()}}
+    by_config = {}
+    for config in sorted({c for c, _ in LMARENA_BOARDS.values()}):
+        started = time.monotonic()
+        by_config[config] = _hf_rows(config)
+        log.info("lmarena : %s = %d lignes (%.1f s)", config, len(by_config[config]), time.monotonic() - started)
     boards = {}
     for board_id, (config, category) in LMARENA_BOARDS.items():
         rows = [r for r in by_config[config] if r.get("category") == category]
