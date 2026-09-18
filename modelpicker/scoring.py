@@ -329,8 +329,9 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
             "score": "Q × (1 + α × A / 100) ÷ max(P, 0,05)^β",
             "Q": "(somme des percentiles 0-100 du modèle dans les n sources de qualité de la tâche + 50) ÷ (n + 1)",
             "A": "percentile d'usage OpenRouter (tokens/jour), 0 si absent du classement",
-            "P": (f"prix mixte $/M tokens = {round(share_in * 100)} % × entrée + {round((1 - share_in) * 100)} % × sortie "
-                  "(répartition moyenne estimée pour cet usage : elle peut varier selon votre utilisation)"),
+            "P": f"prix mixte $/M tokens = {round(share_in * 100)} % × entrée + {round((1 - share_in) * 100)} % × sortie",
+            "P_note": (f"répartition moyenne estimée pour l'usage « {task['label']} » : "
+                       "elle peut varier selon votre utilisation"),
             "alpha": alpha, "beta": beta,
             "index": "score qualité-prix sur 100 = score ÷ meilleur score parmi les modèles qui passent les filtres × 100",
             **({"fast": "score × (0,5 + R / 100)",

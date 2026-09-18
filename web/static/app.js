@@ -96,7 +96,7 @@
       <ul>
         <li>Q = ${esc(f.Q)}</li>
         <li>A = ${esc(f.A)}</li>
-        <li>P = ${esc(f.P)}</li>
+        <li>P = ${esc(f.P)} <strong>(${esc(f.P_note)})</strong></li>
         ${f.fast ? `<li>Tri rapide : ${esc(f.fast)}, avec R = ${esc(f.R)}</li>` : ''}
         <li>${esc(f.index.charAt(0).toUpperCase() + f.index.slice(1))}</li>
       </ul>
