@@ -50,7 +50,7 @@ class TestBrand(unittest.TestCase):
             if name.startswith("_"):
                 continue
             for src in task["sources"]:
-                self.assertRegex(js, rf"{src}:", f"abréviation manquante dans app.js : {src}")
+                self.assertIn(f"{src}:", js, f"abréviation manquante dans app.js : {src}")
 
     def test_single_cta_in_template(self):
         html = (Path(__file__).resolve().parents[1] / "web" / "templates" / "index.html").read_text(encoding="utf-8")
