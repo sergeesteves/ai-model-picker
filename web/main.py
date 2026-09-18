@@ -111,6 +111,17 @@ async def health():
             "needs_refresh": sources.needs_refresh(), "cache": str(sources.cache_dir())}
 
 
+@app.get("/api/insights")
+async def api_insights():
+    """Phrases datées des zones dynamiques de la landing (lues chaque jour par le workflow n8n)."""
+    if not store.ready:
+        return _error(503, "loading", "Données en cours de chargement.")
+    from modelpicker.insights import build_insights
+    with store._lock:
+        res = build_insights(store.models, store.history, store.lmarena, store.epoch, store.perf)
+    return JSONResponse({"ok": True, **res}, headers={"Cache-Control": "no-store"})
+
+
 @app.get("/api/recommend")
 async def api_recommend(request: Request):
     if not rate_limiter.allow(client_ip(request)):

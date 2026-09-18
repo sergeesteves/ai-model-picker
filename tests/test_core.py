@@ -185,5 +185,18 @@ class TestSpeed(unittest.TestCase):
         self.assertEqual(no_perf["results"], [])
 
 
+class TestInsights(unittest.TestCase):
+    def test_zones_are_contained_html_and_dated(self):
+        from modelpicker.insights import build_insights, date_fr
+        self.assertEqual(date_fr("2026-10-01"), "1er octobre 2026")
+        res = build_insights(MODELS, USAGE, LMARENA, None, PERF, today="2026-09-18")
+        self.assertEqual(set(res["zones"]), {"qmia-langues", "qmia-sources"})
+        for html in res["zones"].values():
+            self.assertTrue(html.startswith("<p>") and html.endswith("</p>"))
+            self.assertEqual(html.count("<p>"), 1)
+            self.assertNotIn("<!-- wp:", html)
+        self.assertIn("18 septembre 2026", res["zones"]["qmia-sources"])
+
+
 if __name__ == "__main__":
     unittest.main()
