@@ -332,6 +332,7 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
             "P": f"prix mixte $/M tokens = {round(share_in * 100)} % × entrée + {round((1 - share_in) * 100)} % × sortie",
             "P_note": (f"répartition moyenne estimée pour l'usage « {task['label']} » : "
                        "elle peut varier selon votre utilisation"),
+            "P_usage": task["label"],  # à mettre en valeur dans P_note (seul l'usage passe en gras)
             "alpha": alpha, "beta": beta,
             "index": "score qualité-prix sur 100 = score ÷ meilleur score parmi les modèles qui passent les filtres × 100",
             **({"fast": "score × (0,5 + R / 100)",

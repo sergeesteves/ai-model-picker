@@ -80,8 +80,10 @@ def to_markdown(res: dict) -> str:
                 f"| {usage} | {'—' if score is None else score} |")
     lines.append("")
     f = res["formula"]
+    usage = f["P_usage"]
+    p_note = f["P_note"].replace(f"« {usage} »", f"« **{usage}** »")  # seul l'usage choisi en gras
     lines.append(f"**Formule** : score = {f['score']} avec α = {_dec(f['alpha'])}, β = {_dec(f['beta'])}. "
-                 f"Q = {f['Q']} ; A = {f['A']} ; P = {f['P']} (**{f['P_note']}**)."
+                 f"Q = {f['Q']} ; A = {f['A']} ; P = {f['P']} ({p_note})."
                  + (f" Tri rapide : {f['fast']}, R = {f['R']}." if "fast" in f else ""))
     lines.append(f"{f['index'].capitalize()} (en tri rapide : même principe sur le score rapide). "
                  f"{res['total_candidates']} modèles classés après filtres. ⓞ = poids ouverts (id Hugging Face déclaré).")
