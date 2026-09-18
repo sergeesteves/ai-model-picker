@@ -59,7 +59,7 @@ def to_markdown(res: dict) -> str:
     if not res["results"]:
         lines.append("_Aucun modèle ne passe ces filtres._")
     else:
-        lines.append("| # | Modèle | Éditeur | Qualité (sources) | Prix mixte $/M | Entrée / sortie | Contexte | Latence | Vitesse | Usage/jour (rang) | Score |")
+        lines.append("| # | Modèle | Éditeur | Qualité (sources) | Prix mixte $/M | Entrée / sortie | Contexte | Latence | Vitesse | Usage/jour (rang) | Score qualité-prix /100 |")
         lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
         for r in res["results"]:
             detail = ", ".join(f"{SOURCE_SHORT[s]} {_dec(v['percentile'], 0)}" for s, v in r["quality_detail"].items())
@@ -72,18 +72,19 @@ def to_markdown(res: dict) -> str:
             fp = sp.get("fastest_provider") or {}
             if fp.get("throughput_tps") and sp.get("throughput_tps") and fp["throughput_tps"] > sp["throughput_tps"] * 1.15:
                 tps += f" (max {_dec(fp['throughput_tps'], 0)} chez {fp['provider']})"
-            score = r["fast_score"] if q["sort"] == "fast" else r["score"]
+            score = r["fast_index"] if q["sort"] == "fast" else r["value_index"]
             lines.append(
                 f"| {r['position']} | {r['name']}{ow} | {r['author']} | **{_dec(r['quality'], 0)}** "
                 f"({r['n_sources']}/{r['n_sources_possible']} : {detail}) | {_dec(r['blended_price_per_m'])} "
                 f"| {_dec(r['price_in_per_m'])} / {_dec(r['price_out_per_m'])} | {_ctx(r['context_length'])} | {lat} | {tps} "
-                f"| {usage} | {_dec(score, 1)} |")
+                f"| {usage} | {'—' if score is None else score} |")
     lines.append("")
     f = res["formula"]
     lines.append(f"**Formule** : score = {f['score']} avec α = {_dec(f['alpha'])}, β = {_dec(f['beta'])}. "
                  f"Q = {f['Q']} ; A = {f['A']} ; P = {f['P']}."
                  + (f" Tri rapide : {f['fast']}, R = {f['R']}." if "fast" in f else ""))
-    lines.append(f"{res['total_candidates']} modèles classés après filtres. ⓞ = poids ouverts (id Hugging Face déclaré).")
+    lines.append(f"{f['index'].capitalize()} (en tri rapide : même principe sur le score rapide). "
+                 f"{res['total_candidates']} modèles classés après filtres. ⓞ = poids ouverts (id Hugging Face déclaré).")
     lines.append("")
     lines.append("**Sources** :")
     for s in res["sources"]:

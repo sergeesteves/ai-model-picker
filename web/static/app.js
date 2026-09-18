@@ -63,8 +63,8 @@
     $('#summary').textContent = data.summary;
     $('#understood').innerHTML = '<span>Compris comme :</span>' + data.understood.map((u) => `<span class="chip">${esc(u)}</span>`).join('');
     const FAST = data.query.sort === 'fast';
-    const scoreOf = (r) => (FAST ? r.fast_score : r.score) || 0;
-    const maxScore = Math.max(...res.results.map(scoreOf), 1);
+    const scoreOf = (r) => (FAST ? r.fast_index : r.value_index) || 0;
+    $('#score-head').textContent = FAST ? 'Score vitesse-qualité-prix' : 'Score qualité-prix';
     $('#rows').innerHTML = res.results.length ? res.results.map((r) => {
       const detail = Object.entries(r.quality_detail).map(([s, v]) => `${SHORT[s] || s} ${dec(v.percentile, 0)}`).join(' · ');
       const u = r.usage ? `${tokens(r.usage.tokens_per_day)}<small>${r.usage.rank}ᵉ</small>` : '—';
@@ -84,7 +84,7 @@
         <td class="num">${lat}</td>
         <td class="num">${tps}</td>
         <td class="num">${u}</td>
-        <td class="num">${dec(scoreOf(r), 1)}<div class="bar"><span style="width:${(100 * scoreOf(r) / maxScore).toFixed(1)}%"></span></div></td>
+        <td class="num">${scoreOf(r)}<small>/100</small><div class="bar"><span style="width:${scoreOf(r)}%"></span></div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="10">Aucun modèle ne passe ces filtres. Essayez d\'en relâcher un.</td></tr>';
 
@@ -98,6 +98,7 @@
         <li>A = ${esc(f.A)}</li>
         <li>P = ${esc(f.P)}</li>
         ${f.fast ? `<li>Tri rapide : ${esc(f.fast)}, avec R = ${esc(f.R)}</li>` : ''}
+        <li>${esc(f.index.charAt(0).toUpperCase() + f.index.slice(1))}</li>
       </ul>
       <p style="margin-top:10px"><strong>Sources</strong> (${res.total_candidates} modèles classés après filtres)</p>
       <ul>${res.sources.map((s) => `<li>${esc(s.label)}, données du ${esc(s.date)}</li>`).join('')}

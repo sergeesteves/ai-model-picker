@@ -87,6 +87,16 @@ class TestScoring(unittest.TestCase):
         self.assertNotIn("acme/unscored", [r["id"] for r in res["results"]])
         self.assertEqual(res["unscored_popular"][0]["id"], "acme/unscored")
 
+    def test_value_index_is_relative_to_best_candidate(self):
+        res = self.run_query(sort="value")
+        rows = res["results"]
+        self.assertEqual(rows[0]["value_index"], 100)
+        for r in rows[1:]:
+            self.assertEqual(r["value_index"], round(100 * r["score"] / rows[0]["score"]))
+        # en tri par prix, le n° 1 n'est pas forcément à 100 : l'indice reste celui du rapport qualité-prix
+        by_price = self.run_query(sort="price")["results"]
+        self.assertIn(100, [r["value_index"] for r in by_price])
+
     def test_value_default_quality_floor(self):
         res = recommend(MODELS, USAGE, LMARENA, None, {"sort": "value"}, today="2026-09-17")
         self.assertTrue(all(r["quality"] >= 60 for r in res["results"]))

@@ -64,6 +64,20 @@ pas dépasser 75, un modèle confirmé par trois sources peut atteindre 87,5. Le
 Aucun benchmark public ne mesure la qualité SEO / GEO d'un texte : `redaction` juge l'écriture et le
 respect des consignes, qui sont ce qui compte pour suivre un brief.
 
+**D'où viennent ces parts d'entrée ? Ce sont des hypothèses, pas des mesures** : aucune source publique ne
+donne la répartition entrée/sortie par type de tâche (l'API de classement d'OpenRouter accepte un paramètre de
+catégorie mais l'ignore, testé le 18/09/2026 : chiffres identiques pour « marketing/seo », « programming »…).
+Repères : 98 % des tokens traités sur OpenRouter sont de l'entrée (agents de code) ; un brief court qui produit un
+article long est surtout de la sortie. La convention d'Artificial Analysis est un mélange 3:1 (75 % d'entrée).
+
+Sensibilité mesurée le 18/09/2026 sur `redaction_fr` : à 40, 60, 80 et 95 % d'entrée, **les cinq finalistes
+restent les mêmes**, seul leur ordre change (n° 1 DeepSeek V4 Flash 0423 à 40 %, GLM 5.3 Flash au-delà).
+
+Exemples réels (ordres de grandeur, outils de l'auteur) : générateur de voix de marque ≈ 9 000 tokens lus pour
+≈ 2 000 écrits (≈ 80 % d'entrée) ; question libre de ce comparateur ≈ 1 300 pour 120 (> 90 %). Un workflow de
+rédaction qui injecte guide de style, exemples ou contenu des SERP est donc plus proche de l'entrée que de la
+sortie. `--input-share` permet d'imposer son propre ratio.
+
 Rédiger inverse l'économie des tokens : un brief court produit un long texte, donc le prix de **sortie** pèse
 60 %. En `redaction_fr`, le classement des prompts en français remplace l'indice d'intelligence : un modèle
 bon en anglais ne l'est pas toujours en français, et l'écart se voit (GLM 5.3 Flash est au 94ᵉ percentile
@@ -88,6 +102,11 @@ score = Q × (1 + α × A / 100) ÷ max(P, 0,05)^β      α = 0,25   β = 0,5
   modèles très bon marché, β = 0 revient à trier par qualité.
 - α = 0,25 : l'adoption départage (au plus +25 %) sans pouvoir faire gagner un modèle médiocre.
 - Plancher de qualité par défaut à 60 pour ce tri (un « rapport qualité/prix » suppose une qualité correcte).
+
+**Affichage : score qualité-prix sur 100.** Le score brut n'a pas d'unité (points de qualité par racine de
+dollar) et ne se compare pas d'une recherche à l'autre. On affiche donc `score ÷ meilleur score × 100`, calculé
+parmi tous les modèles qui passent les filtres : 100 = meilleur rapport qualité-prix de la liste. Même principe
+pour le score rapide.
 
 Autres tris : `quality` (Q décroissant, puis prix), `price` (P croissant, puis Q), `usage` (tokens/jour).
 
@@ -124,6 +143,9 @@ signalé à part.
 - **Niveau d'effort** : LMArena note souvent la version « max » ; le prix au token affiché ne dit rien du
   surcroît de tokens de réflexion.
 - **Poids ouverts** = id Hugging Face déclaré sur OpenRouter (heuristique).
+- **Usage gratuit compté** : les variantes `:free` représentent ~8 % des tokens (17/09/2026). Test empirique :
+  les exclure ne change **aucun top 5** sur 18 classements (6 tâches × 3 tris), seulement des rangs 6 à 10 dans
+  6 cas. On garde donc les chiffres d'OpenRouter tels quels.
 - **Vitesse instantanée** : médianes sur 30 minutes, qui varient avec l'heure de collecte, la charge des
   hébergeurs et la longueur des réponses ; la moyenne sur plusieurs jours lisse en partie. Pour un modèle qui
   réfléchit, la latence avant le premier token inclut souvent la réflexion.

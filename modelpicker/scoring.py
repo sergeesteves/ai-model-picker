@@ -311,6 +311,12 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
         "usage": lambda r: (-(r["usage"] or {}).get("tokens_per_day", 0), -r["quality"]),
         "fast": lambda r: (-(r["fast_score"] or 0), r["blended_price_per_m"]),
     }
+    # Indice sur 100 : 100 = meilleur modèle parmi ceux qui passent les filtres (avant troncature au top N)
+    best_value = max((r["score"] for r in results), default=0)
+    best_fast = max((r["fast_score"] or 0 for r in results), default=0)
+    for r in results:
+        r["value_index"] = round(100 * r["score"] / best_value) if best_value else None
+        r["fast_index"] = round(100 * r["fast_score"] / best_fast) if best_fast and r["fast_score"] is not None else None
     results.sort(key=sort_keys[q["sort"]])
     for i, r in enumerate(results):
         r["position"] = i + 1
@@ -325,6 +331,7 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
             "A": "percentile d'usage OpenRouter (tokens/jour), 0 si absent du classement",
             "P": f"prix mixte $/M tokens = {round(share_in * 100)} % × entrée + {round((1 - share_in) * 100)} % × sortie",
             "alpha": alpha, "beta": beta,
+            "index": "score qualité-prix sur 100 = score ÷ meilleur score parmi les modèles qui passent les filtres × 100",
             **({"fast": "score × (0,5 + R / 100)",
                 "R": "réactivité 0-100 = moyenne des percentiles de débit (tokens/s, plus haut = mieux) et de latence avant le premier token (plus bas = mieux), parmi les modèles mesurés"}
                if q["sort"] == "fast" else {}),
