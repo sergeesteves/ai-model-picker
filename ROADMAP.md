@@ -28,6 +28,10 @@
 
 Décision (2026-09-17) : **page vitrine d'expertise, gratuite, non monétisée**.
 
+Landing WordPress (page 4133) avec deux zones dynamiques `qmia-langues` et `qmia-sources`, remplies chaque matin
+(7 h 45) par le workflow n8n `Ky6SYkM8MqXI2Gm0` : `GET /api/insights` (phrases par gabarit, sans LLM,
+`modelpicker/insights.py`) puis ability `creapulse-tools/update-dynamic-zones`.
+
 - Micro-app (même patron que le générateur de voix de marque) qui appelle `scoring.recommend()`, cache
   rafraîchi par tâche planifiée côté serveur. Jamais de sous-domaine.
 - Deux entrées :
