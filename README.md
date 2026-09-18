@@ -42,7 +42,7 @@ python -m modelpicker recommend --task code --open-weights --format json
 
 | Option | Rôle |
 |---|---|
-| `--task general\|redaction\|redaction_fr\|code\|agentic\|documents` | sources de qualité et pondération du prix (rédaction : le prix de sortie pèse 60 %) |
+| `--task general\|redaction\|redaction_fr\|code\|agentic\|documents` | sources de qualité et pondération du prix (rédaction : le prix de sortie pèse 60 % ; aucun benchmark ne mesure le SEO/GEO, on juge l'écriture et les consignes) |
 | `--sort value\|quality\|price\|usage\|fast` | rapport qualité/prix (défaut), qualité, prix, adoption, rapide + qualité/prix |
 | `--author openai,anthropic` | éditeurs (préfixe du slug OpenRouter) |
 | `--min-context`, `--max-price`, `--min-quality`, `--min-sources` | contraintes |

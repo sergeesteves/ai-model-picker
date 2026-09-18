@@ -61,6 +61,9 @@ pas dépasser 75, un modèle confirmé par trois sources peut atteindre 87,5. Le
 | `agentic` | AA Agentic, LMArena Agent | 95 % |
 | `documents` | AA Intelligence, LMArena requêtes longues, LMArena Text | 95 % |
 
+Aucun benchmark public ne mesure la qualité SEO / GEO d'un texte : `redaction` juge l'écriture et le
+respect des consignes, qui sont ce qui compte pour suivre un brief.
+
 Rédiger inverse l'économie des tokens : un brief court produit un long texte, donc le prix de **sortie** pèse
 60 %. En `redaction_fr`, le classement des prompts en français remplace l'indice d'intelligence : un modèle
 bon en anglais ne l'est pas toujours en français, et l'écart se voit (GLM 5.3 Flash est au 94ᵉ percentile

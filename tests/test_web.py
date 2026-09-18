@@ -41,6 +41,17 @@ class TestBrand(unittest.TestCase):
         self.assertIn("background: var(--cp-primary-fill)", rule)
         self.assertIn("color: #fff", rule)
 
+    def test_every_task_source_has_a_browser_label(self):
+        import json
+        root = Path(__file__).resolve().parents[1]
+        js = (root / "web" / "static" / "app.js").read_text(encoding="utf-8")
+        tasks = json.loads((root / "data" / "tasks.json").read_text(encoding="utf-8"))
+        for name, task in tasks.items():
+            if name.startswith("_"):
+                continue
+            for src in task["sources"]:
+                self.assertRegex(js, rf"{src}:", f"abréviation manquante dans app.js : {src}")
+
     def test_single_cta_in_template(self):
         html = (Path(__file__).resolve().parents[1] / "web" / "templates" / "index.html").read_text(encoding="utf-8")
         self.assertEqual(len(re.findall(r'class="cta"', html)), 1)

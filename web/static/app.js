@@ -6,7 +6,9 @@
   const dec = (x, d = 2) => Number(x).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
   const tokens = (n) => n >= 1e9 ? dec(n / 1e9, n >= 1e11 ? 0 : 1) + ' Md' : n >= 1e6 ? dec(n / 1e6, 0) + ' M' : dec(n / 1e3, 0) + ' k';
   const ctx = (n) => !n ? '—' : n >= 1e6 ? dec(n / 1e6, n % 1e6 ? 1 : 0) + ' M' : Math.round(n / 1e3) + ' k';
-  const SHORT = { aa_intelligence: 'AA', aa_coding: 'AA', aa_agentic: 'AA', lmarena_text: 'LMArena', lmarena_coding: 'LMArena code', lmarena_webdev: 'LMArena WebDev', lmarena_agent: 'LMArena agent', epoch_eci: 'Epoch' };
+  const SHORT = { aa_intelligence: 'AA', aa_coding: 'AA', aa_agentic: 'AA', lmarena_text: 'LMArena', lmarena_coding: 'LMArena code', lmarena_webdev: 'LMArena WebDev', lmarena_agent: 'LMArena agent', epoch_eci: 'Epoch',
+    lmarena_creative_writing: 'LMArena rédaction', lmarena_instruction_following: 'LMArena consignes',
+    lmarena_french: 'LMArena français', lmarena_longer_query: 'LMArena requêtes longues' };
 
   if (EMBED && window.parent !== window) {
     // Contrat du shortcode creapulse_tool (autoheight) : type 'vsg-height'

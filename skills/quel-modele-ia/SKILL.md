@@ -23,7 +23,7 @@ sortie de progression sur stderr) ; ensuite tout est lu dans le cache.
 |---|---|
 | code, dev, programmation, refactor, front, webdev | `--task code` |
 | agent, outils, tool calling, automatisation, workflow agentique | `--task agentic` (souvent avec `--tools`) |
-| rédiger : article, blog, SEO, GEO, newsletter, landing, post social, copywriting | `--task redaction` |
+| rédiger : article, blog, SEO, GEO, newsletter, landing, post social, copywriting (langue non précisée ou autre que le français) | `--task redaction` — aucun benchmark ne mesure le SEO/GEO : on juge l'écriture et le respect des consignes |
 | rédiger **en français** (contenu francophone) | `--task redaction_fr` |
 | résumer / analyser des documents longs, PDF, transcriptions, audits | `--task documents` |
 | chat, questions-réponses, traduction, rien de précis | `--task general` (défaut) |

@@ -10,7 +10,7 @@
     ]
   },
   "redaction": {
-    "label": "rédaction (SEO / GEO)",
+    "label": "rédaction",
     "input_share": 0.4,
     "sources": [
       "aa_intelligence",
