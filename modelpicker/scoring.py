@@ -15,9 +15,9 @@ from .match import ModelIndex
 TASKS_PATH = Path(__file__).resolve().parent.parent / "data" / "tasks.json"
 
 SOURCE_LABELS = {
-    "aa_intelligence": "Artificial Analysis · Intelligence Index (via API OpenRouter)",
-    "aa_coding": "Artificial Analysis · Coding Index (via API OpenRouter)",
-    "aa_agentic": "Artificial Analysis · Agentic Index (via API OpenRouter)",
+    "aa_intelligence": "Artificial Analysis · Intelligence Index (relayé par OpenRouter)",
+    "aa_coding": "Artificial Analysis · Coding Index (relayé par OpenRouter)",
+    "aa_agentic": "Artificial Analysis · Agentic Index (relayé par OpenRouter)",
     "lmarena_text": "LMArena · Text, préférence humaine (Elo)",
     "lmarena_coding": "LMArena · Text/Coding, préférence humaine (Elo)",
     "lmarena_creative_writing": "LMArena · Rédaction créative, préférence humaine (Elo)",
@@ -329,7 +329,8 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
             "score": "Q × (1 + α × A / 100) ÷ max(P, 0,05)^β",
             "Q": "(somme des percentiles 0-100 du modèle dans les n sources de qualité de la tâche + 50) ÷ (n + 1)",
             "A": "percentile d'usage OpenRouter (tokens/jour), 0 si absent du classement",
-            "P": f"prix mixte $/M tokens = {round(share_in * 100)} % × entrée + {round((1 - share_in) * 100)} % × sortie",
+            "P": (f"prix mixte $/M tokens = {round(share_in * 100)} % × entrée + {round((1 - share_in) * 100)} % × sortie "
+                  "(répartition moyenne estimée pour cet usage : elle peut varier selon votre utilisation)"),
             "alpha": alpha, "beta": beta,
             "index": "score qualité-prix sur 100 = score ÷ meilleur score parmi les modèles qui passent les filtres × 100",
             **({"fast": "score × (0,5 + R / 100)",
@@ -338,9 +339,9 @@ def recommend(models_snap: dict, usage_history: list[dict], lmarena_snap: dict |
         },
         "sources": [{"id": s, "label": SOURCE_LABELS[s], "date": signals[s]["date"],
                      "entries": signals[s]["entries"], "matched": signals[s]["matched"]} for s in task_sources],
-        "usage_source": {"label": "OpenRouter · Rankings (tokens traités, tous hébergeurs)",
+        "usage_source": {"label": "OpenRouter · tokens traités par modèle, tous hébergeurs",
                          "date": usage["date"], "first_date": usage.get("first_date"), "days": usage["days"]},
-        "prices_source": {"label": "OpenRouter · /api/v1/models", "date": models_snap.get("source_date")},
+        "prices_source": {"label": "OpenRouter · tarifs publiés", "date": models_snap.get("source_date")},
         "speed_source": {"label": "OpenRouter · performances par hébergeur (médianes sur 30 min, pondérées par requêtes)",
                          "date": perf["date"], "first_date": perf.get("first_date"), "days": perf["days"],
                          "measured_at": perf.get("measured_at")},
